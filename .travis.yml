@@ -1,5 +1,9 @@
 language: go
 go:
 - 1.11.x
+install:
+- wget https://github.com/neo4j-drivers/seabolt/releases/download/v1.7.0/seabolt-1.7.0-Linux-Ubuntu-Xenial.deb
+- dpkg -i seabolt-1.7.0-Linux-Ubuntu-Xenial.deb
+- rm seabolt-1.7.0-Linux-Ubuntu-Xenial.deb
 script:
 - GO111MODULE=on go test ./...
