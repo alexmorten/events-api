@@ -26,6 +26,7 @@ func (s *Server) Init() {
 	actionHandler := actions.NewActionHandler()
 	s.engine = gin.Default()
 	actionHandler.RegisterEventRoutes(s.engine.Group("/events"))
+	actionHandler.RegisterAuthRoutes(s.engine.Group("/auth"))
 }
 
 //Run the Server
