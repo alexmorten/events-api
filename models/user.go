@@ -1,7 +1,10 @@
 package models
 
 import (
+	"time"
+
 	"github.com/alexmorten/events-api/db"
+	jwt "github.com/dgrijalva/jwt-go"
 	"github.com/markbates/goth"
 	"github.com/neo4j/neo4j-go-driver/neo4j"
 )
@@ -71,6 +74,13 @@ func FindUserByEmail(dbDriver neo4j.Driver, email string) (*User, error) {
 	return nil, nil
 }
 
+//UserFromProps tries to get struct fields from the neo4j record
+func UserFromProps(props map[string]interface{}) *User {
+	user := &User{}
+	db.UnmarshalNeoFields(user, props)
+	return user
+}
+
 //NodeName is the label of user-nodes in the database
 func (u *User) NodeName() string {
 	return "User"
@@ -90,9 +100,10 @@ func (u *User) UpdateFromGothUser(gothUser goth.User) {
 	u.Location = gothUser.Location
 }
 
-//UserFromProps tries to get struct fields from the neo4j record
-func UserFromProps(props map[string]interface{}) *User {
-	user := &User{}
-	db.UnmarshalNeoFields(user, props)
-	return user
+//ClaimMap returns a claim for jwt
+func (u *User) ClaimMap() jwt.MapClaims {
+	return jwt.MapClaims{
+		"uid":       u.UID,
+		"issued_at": time.Now().Format("2006-01-02 15:04:05.999999999 -0700 MST"),
+	}
 }

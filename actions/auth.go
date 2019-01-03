@@ -1,10 +1,12 @@
 package actions
 
 import (
+	"fmt"
 	"net/http"
 	"os"
 
 	"github.com/alexmorten/events-api/db"
+	jwt "github.com/dgrijalva/jwt-go"
 
 	"github.com/alexmorten/events-api/models"
 
@@ -50,7 +52,16 @@ func (h *ActionHandler) RegisterAuthRoutes(group *gin.RouterGroup) {
 			return
 		}
 		savedUser := models.UserFromProps(props)
-		c.JSON(http.StatusCreated, savedUser)
+		fmt.Println(savedUser)
+		token := jwt.NewWithClaims(jwt.SigningMethodHS256, savedUser.ClaimMap())
+		// Sign and get the complete encoded token as a string using the secret
+		tokenString, err := token.SignedString([]byte(os.Getenv("JWT_SECRET")))
+		fmt.Println(tokenString)
+		if err != nil {
+			c.AbortWithError(http.StatusInternalServerError, err)
+			return
+		}
+		c.Redirect(http.StatusTemporaryRedirect, fmt.Sprintf("http://localhost:3001/login_redirect?jwt=%v", tokenString))
 		return
 	})
 }
