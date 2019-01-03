@@ -2,8 +2,9 @@ package actions
 
 import (
 	"errors"
-	"fmt"
 	"net/http"
+
+	"github.com/alexmorten/events-api/db"
 
 	"github.com/alexmorten/events-api/models"
 	"github.com/gin-gonic/gin"
@@ -85,26 +86,12 @@ func (h *ActionHandler) postEvents(c *gin.Context) {
 		return
 	}
 
-	dbSession, err := h.dbDriver.Session(neo4j.AccessModeWrite)
+	props, err := db.Save(h.dbDriver, event)
 	if err != nil {
 		c.AbortWithError(http.StatusInternalServerError, err)
 		return
 	}
-	result, err := dbSession.Run(fmt.Sprintf("create (n:Event {%v}) return properties(n)", models.EventNeoPropString()), event.NeoPropMap())
-	if err != nil {
-		c.AbortWithError(http.StatusInternalServerError, err)
-		return
-	}
-	result.Next()
-	record := result.Record()
-	propInterface, ok := record.Get("properties(n)")
-	if ok {
-		props, ok := propInterface.(map[string]interface{})
-		if ok {
-			createdEvent := models.EventFromProps(props)
-			c.JSON(http.StatusCreated, createdEvent)
-			return
-		}
-	}
-	c.AbortWithStatus(http.StatusBadRequest)
+
+	createdEvent := models.EventFromProps(props)
+	c.JSON(http.StatusCreated, createdEvent)
 }

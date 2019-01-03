@@ -2,6 +2,9 @@ package main
 
 import (
 	"github.com/alexmorten/events-api"
+
+	//import .env file if present
+	_ "github.com/joho/godotenv/autoload"
 )
 
 func main() {
