@@ -2,7 +2,7 @@ language: go
 go:
 - 1.11.x
 install:
-- apt install git build-essential cmake libssl-dev
+- sudo apt install git build-essential cmake libssl-dev
 - wget https://github.com/neo4j-drivers/seabolt/releases/download/v1.7.0/seabolt-1.7.0-Linux-Ubuntu-Xenial.deb
 - sudo dpkg -i seabolt-1.7.0-Linux-Ubuntu-Xenial.deb
 - rm seabolt-1.7.0-Linux-Ubuntu-Xenial.deb
