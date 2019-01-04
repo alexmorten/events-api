@@ -17,6 +17,5 @@ RUN apk --no-cache add ca-certificates
 RUN mkdir app
 COPY --from=builder /go/src/github.com/alexmorten/events-api/api /app
 WORKDIR /app
-RUN ls -lisah
 CMD ["./api"]
 EXPOSE 3000
