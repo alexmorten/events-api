@@ -1,10 +1,12 @@
 package models
 
 import (
+	"errors"
 	"time"
 
 	"github.com/alexmorten/events-api/db"
 	jwt "github.com/dgrijalva/jwt-go"
+	"github.com/google/uuid"
 	"github.com/markbates/goth"
 	"github.com/neo4j/neo4j-go-driver/neo4j"
 )
@@ -100,10 +102,58 @@ func (u *User) UpdateFromGothUser(gothUser goth.User) {
 	u.Location = gothUser.Location
 }
 
-//ClaimMap returns a claim for jwt
-func (u *User) ClaimMap() jwt.MapClaims {
+//Claim returns a claim for jwt
+func (u *User) Claim() *UserClaim {
+	return &UserClaim{
+		UID:      u.UID,
+		IssuedAt: time.Now(),
+	}
+}
+
+//UserClaim is a struct representing the claim issued in the jwt on authentication
+type UserClaim struct {
+	UID      uuid.UUID
+	IssuedAt time.Time
+}
+
+//UserClaimFromMap returns a UserClaim if the provided map contains the correct fields
+func UserClaimFromMap(m map[string]interface{}) (*UserClaim, error) {
+	claim := &UserClaim{}
+	uidInterface, ok := m["uid"]
+	if !ok {
+		return nil, errors.New("uid not present in claim")
+	}
+	uidString, ok := uidInterface.(string)
+	if !ok {
+		return nil, errors.New("uid not string in claim")
+	}
+	uid, err := uuid.Parse(uidString)
+	if err != nil {
+		return nil, err
+	}
+	claim.UID = uid
+
+	issuedAtInterface, ok := m["issued_at"]
+	if !ok {
+		return nil, errors.New("issued_at not present in claim")
+	}
+	issuedAtString, ok := issuedAtInterface.(string)
+	if !ok {
+		return nil, errors.New("issued_at not string in claim")
+	}
+	issuedAt, err := time.Parse("2006-01-02 15:04:05.999999999 -0700 MST", issuedAtString)
+	if err != nil {
+		return nil, err
+	}
+	claim.IssuedAt = issuedAt
+
+	return claim, nil
+}
+
+//Map of claims in the jwt
+func (c *UserClaim) Map() jwt.MapClaims {
 	return jwt.MapClaims{
-		"uid":       u.UID,
-		"issued_at": time.Now().Format("2006-01-02 15:04:05.999999999 -0700 MST"),
+		"uid":       c.UID.String(),
+		"issued_at": c.IssuedAt.Format("2006-01-02 15:04:05.999999999 -0700 MST"),
 	}
 }

@@ -53,7 +53,7 @@ func (h *ActionHandler) RegisterAuthRoutes(group *gin.RouterGroup) {
 		}
 		savedUser := models.UserFromProps(props)
 		fmt.Println(savedUser)
-		token := jwt.NewWithClaims(jwt.SigningMethodHS256, savedUser.ClaimMap())
+		token := jwt.NewWithClaims(jwt.SigningMethodHS256, savedUser.Claim().Map())
 		// Sign and get the complete encoded token as a string using the secret
 		tokenString, err := token.SignedString([]byte(os.Getenv("JWT_SECRET")))
 		fmt.Println(tokenString)
