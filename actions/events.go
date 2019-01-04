@@ -79,6 +79,12 @@ func (h *ActionHandler) getEvents(c *gin.Context) {
 }
 
 func (h *ActionHandler) postEvents(c *gin.Context) {
+	currentUserClaim := h.currentUserClaim(c)
+	if currentUserClaim == nil {
+		c.AbortWithStatus(http.StatusUnauthorized)
+		return
+	}
+
 	event := models.NewEvent()
 	err := c.ShouldBindJSON(event)
 	if err != nil {
@@ -86,7 +92,7 @@ func (h *ActionHandler) postEvents(c *gin.Context) {
 		return
 	}
 
-	props, err := db.Save(h.dbDriver, event)
+	props, err := db.CreateBy(h.dbDriver, event, currentUserClaim.UID.String())
 	if err != nil {
 		c.AbortWithError(http.StatusInternalServerError, err)
 		return
