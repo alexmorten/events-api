@@ -61,7 +61,7 @@ func (h *ActionHandler) RegisterAuthRoutes(group *gin.RouterGroup) {
 			c.AbortWithError(http.StatusInternalServerError, err)
 			return
 		}
-		c.Redirect(http.StatusTemporaryRedirect, fmt.Sprintf("http://localhost:3001/login_redirect?jwt=%v", tokenString))
+		c.Redirect(http.StatusTemporaryRedirect, fmt.Sprintf("http://localhost:9876/login_redirect?jwt=%v", tokenString))
 		return
 	})
 }
