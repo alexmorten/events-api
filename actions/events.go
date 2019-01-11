@@ -86,12 +86,13 @@ func (h *ActionHandler) postEvents(c *gin.Context) {
 	}
 
 	event := models.NewEvent()
-	err := c.ShouldBindJSON(event)
+	eventAttributes := &models.EventAttributes{}
+	err := c.ShouldBindJSON(eventAttributes)
 	if err != nil {
 		c.AbortWithError(http.StatusBadRequest, err)
 		return
 	}
-
+	event.EventAttributes = *eventAttributes
 	props, err := db.CreateBy(h.dbDriver, event, currentUserClaim.UID.String())
 	if err != nil {
 		c.AbortWithError(http.StatusInternalServerError, err)

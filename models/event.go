@@ -4,11 +4,15 @@ import (
 	"github.com/alexmorten/events-api/db"
 )
 
+//EventAttributes ...
+type EventAttributes struct {
+	Name string `json:"name" neo:"name"`
+}
+
 //Event ...
 type Event struct {
 	Model
-
-	Name string `json:"name" neo:"name"`
+	EventAttributes
 }
 
 //NewEvent ...
