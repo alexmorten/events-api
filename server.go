@@ -19,7 +19,7 @@ import (
 //responsible for serving http
 type Server struct {
 	address string
-	engine  *gin.Engine
+	Engine  *gin.Engine
 }
 
 //NewServer returns a server listening on the specified address
@@ -32,15 +32,15 @@ func NewServer(address string) *Server {
 //Init the Server
 func (s *Server) Init() {
 	actionHandler := actions.NewActionHandler()
-	s.engine = gin.Default()
-	rootGroup := s.engine.Group("/", jwtHandler)
+	s.Engine = gin.Default()
+	rootGroup := s.Engine.Group("/", jwtHandler)
 	actionHandler.RegisterEventRoutes(rootGroup.Group("events"))
 	actionHandler.RegisterAuthRoutes(rootGroup.Group("auth"))
 }
 
 //Run the Server
 func (s *Server) Run() {
-	log.Fatal(s.engine.Run(s.address))
+	log.Fatal(s.Engine.Run(s.address))
 }
 
 func jwtHandler(c *gin.Context) {
