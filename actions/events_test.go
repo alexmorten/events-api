@@ -19,7 +19,7 @@ import (
 	"github.com/alexmorten/events-api/db"
 )
 
-func Test_PostEvent(t *testing.T) {
+func Test_Events(t *testing.T) {
 	dbDriver := db.NewDB()
 	s := api.NewServer("")
 	s.Init()
@@ -35,7 +35,7 @@ func Test_PostEvent(t *testing.T) {
 		require.Equal(t, http.StatusUnauthorized, w.Code)
 	})
 
-	t.Run("requests successful with the Authorization header", func(t *testing.T) {
+	t.Run("can create and get an event", func(t *testing.T) {
 		testhelpers.Clear(dbDriver)
 		w := httptest.NewRecorder()
 		body := `{"name":"blubbi di blup"}`
@@ -75,5 +75,38 @@ func Test_PostEvent(t *testing.T) {
 		require.NoError(t, err)
 
 		assert.NotEqual(t, "6ec69d34-2abe-4072-bf70-c423f342da73", event.UID.String())
+	})
+
+	t.Run("can update an event", func(t *testing.T) {
+		testhelpers.Clear(dbDriver)
+		user := testhelpers.CreateSomeUser(dbDriver)
+		event := models.NewEvent()
+		event.Name = "Before"
+		props, err := db.CreateBy(dbDriver, event, user.UID)
+		require.NoError(t, err)
+		eventUID := props["uid"].(string)
+
+		w := httptest.NewRecorder()
+		body := `{"name":"Should not be accepted"}`
+		reader := bytes.NewReader([]byte(body))
+		req, _ := http.NewRequest("PATCH", "/events/"+eventUID, reader)
+
+		testhelpers.AddSomeAuthorization(dbDriver, req)
+		s.Engine.ServeHTTP(w, req)
+		require.Equal(t, http.StatusForbidden, w.Code)
+
+		w = httptest.NewRecorder()
+		body = `{"name":"After"}`
+		reader = bytes.NewReader([]byte(body))
+		req, _ = http.NewRequest("PATCH", "/events/"+eventUID, reader)
+
+		testhelpers.AddAuthorizationHeader(req, user)
+		s.Engine.ServeHTTP(w, req)
+		require.Equal(t, http.StatusOK, w.Code)
+
+		updatedEvent := &models.Event{}
+		err = json.Unmarshal(w.Body.Bytes(), updatedEvent)
+		require.NoError(t, err)
+		assert.Equal(t, "After", updatedEvent.Name)
 	})
 }

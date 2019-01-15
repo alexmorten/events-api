@@ -2,6 +2,8 @@ package models
 
 import (
 	"github.com/alexmorten/events-api/db"
+	"github.com/google/uuid"
+	"github.com/neo4j/neo4j-go-driver/neo4j"
 )
 
 //EventAttributes ...
@@ -22,6 +24,16 @@ func NewEvent() *Event {
 	}
 }
 
+//FindEvent with its uid
+func FindEvent(dbDriver neo4j.Driver, eventUID string) (*Event, error) {
+	props, err := db.FindNode(dbDriver, eventUID)
+	if err != nil {
+		return nil, err
+	}
+
+	return EventFromProps(props), nil
+}
+
 //NodeName is the label of event-nodes in the database
 func (e *Event) NodeName() string {
 	return "Event"
@@ -33,4 +45,14 @@ func EventFromProps(props map[string]interface{}) *Event {
 
 	db.UnmarshalNeoFields(event, props)
 	return event
+}
+
+//CanBeEditedBy user with given uid
+func (e *Event) CanBeEditedBy(dbDriver neo4j.Driver, userUID uuid.UUID) (bool, error) {
+	relationProps, err := db.FindRelation(dbDriver, e.UID.String(), userUID.String(), "CREATED_BY")
+	if err != nil {
+		return false, err
+	}
+
+	return relationProps != nil, nil
 }
