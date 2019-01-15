@@ -6,6 +6,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/alexmorten/events-api/utils"
+
 	"github.com/google/uuid"
 )
 
@@ -75,7 +77,7 @@ func NeoFields(obj interface{}) (neoFieldNames []string) {
 	return
 }
 
-//NeoPropString can be used inside a neo4j query to deifne all props of a node represented by the given struct
+//NeoPropString can be used inside a neo4j query to define all props of a node represented by the given struct
 func NeoPropString(obj interface{}) string {
 	neoFields := NeoFields(obj)
 	propParamCombinations := []string{}
@@ -87,19 +89,10 @@ func NeoPropString(obj interface{}) string {
 }
 
 func forEachSettableNeoStructField(val reflect.Value, f func(field reflect.Value, tag string)) {
-	valType := val.Type()
-	for i := 0; i < val.NumField(); i++ {
-		field := val.Field(i)
-		if !field.CanSet() {
-			continue
-		}
-		if field.Kind() == reflect.Struct {
-			forEachSettableNeoStructField(field, f)
-		}
-		structField := valType.Field(i)
+	utils.ForEachNestedField(val, func(field reflect.Value, structField reflect.StructField) {
 		tag := structField.Tag.Get("neo")
 		if tag != "" {
 			f(field, tag)
 		}
-	}
+	})
 }
