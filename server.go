@@ -8,6 +8,8 @@ import (
 	"os"
 	"strings"
 
+	cors "github.com/rs/cors/wrapper/gin"
+
 	"github.com/alexmorten/events-api/models"
 
 	"github.com/alexmorten/events-api/actions"
@@ -33,6 +35,7 @@ func NewServer(address string) *Server {
 func (s *Server) Init() {
 	actionHandler := actions.NewActionHandler()
 	s.Engine = gin.Default()
+	s.Engine.Use(cors.AllowAll())
 	rootGroup := s.Engine.Group("/", jwtHandler)
 	actionHandler.RegisterEventRoutes(rootGroup.Group("events"))
 	actionHandler.RegisterAuthRoutes(rootGroup.Group("auth"))
