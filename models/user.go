@@ -15,6 +15,9 @@ import (
 type User struct {
 	Model
 
+	Admin bool `json:"admin" neo:"admin"`
+
+	//goth-user attributes
 	Provider    string `json:"provider" neo:"provider"`
 	Email       string `json:"email" neo:"email"`
 	Name        string `json:"name" neo:"name"`
