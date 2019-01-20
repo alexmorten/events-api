@@ -2,7 +2,6 @@ package models
 
 import (
 	"github.com/alexmorten/events-api/db"
-	"github.com/google/uuid"
 	"github.com/neo4j/neo4j-go-driver/neo4j"
 )
 
@@ -49,10 +48,4 @@ func ClubFromProps(props map[string]interface{}) *Club {
 
 	db.UnmarshalNeoFields(club, props)
 	return club
-}
-
-//CanBeEditedBy user with given uid
-func (c *Club) CanBeEditedBy(dbDriver neo4j.Driver, userUID uuid.UUID) bool {
-	relationProps, err := db.FindRelation(dbDriver, c.UID.String(), userUID.String(), "CREATED_BY")
-	return err == nil && relationProps != nil
 }
