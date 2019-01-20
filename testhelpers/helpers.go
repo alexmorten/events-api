@@ -27,6 +27,15 @@ func CreateSomeUser(dbDriver neo4j.Driver) *models.User {
 	return user
 }
 
+//CreateAdminUser and return it
+func CreateAdminUser(dbDriver neo4j.Driver) *models.User {
+	user := models.NewUser()
+	user.Admin = true
+	_, err := db.Save(dbDriver, user)
+	panicOnErr(err)
+	return user
+}
+
 func panicOnErr(err error) {
 	if err != nil {
 		panic(err)

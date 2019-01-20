@@ -37,6 +37,7 @@ func (s *Server) Init() {
 	s.Engine = gin.Default()
 	s.Engine.Use(cors.AllowAll())
 	rootGroup := s.Engine.Group("/", jwtHandler)
+	actionHandler.RegisterClubRoutes(rootGroup.Group("clubs"))
 	actionHandler.RegisterEventRoutes(rootGroup.Group("events"))
 	actionHandler.RegisterAuthRoutes(rootGroup.Group("auth"))
 }

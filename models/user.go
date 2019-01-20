@@ -114,12 +114,14 @@ func (u *User) Claim() *UserClaim {
 	return &UserClaim{
 		UID:      u.UID,
 		IssuedAt: time.Now(),
+		Admin:    u.Admin,
 	}
 }
 
 //UserClaim is a struct representing the claim issued in the jwt on authentication
 type UserClaim struct {
 	UID      uuid.UUID
+	Admin    bool
 	IssuedAt time.Time
 }
 
@@ -154,6 +156,14 @@ func UserClaimFromMap(m map[string]interface{}) (*UserClaim, error) {
 	}
 	claim.IssuedAt = issuedAt
 
+	adminInterface, ok := m["admin"]
+	if ok {
+		admin, ok := adminInterface.(bool)
+		if ok {
+			claim.Admin = admin
+		}
+	}
+
 	return claim, nil
 }
 
@@ -162,5 +172,6 @@ func (c *UserClaim) Map() jwt.MapClaims {
 	return jwt.MapClaims{
 		"uid":       c.UID.String(),
 		"issued_at": c.IssuedAt.Format("2006-01-02 15:04:05.999999999 -0700 MST"),
+		"admin":     c.Admin,
 	}
 }
