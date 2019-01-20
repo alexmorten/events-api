@@ -123,7 +123,7 @@ func Test_Clubs(t *testing.T) {
 
 	t.Run("can delete a club", func(t *testing.T) {
 		testhelpers.Clear(dbDriver)
-		user := testhelpers.CreateSomeUser(dbDriver)
+		user := testhelpers.CreateAdminUser(dbDriver)
 		club := models.NewClub()
 		club.Name = "Before"
 		props, err := db.CreateBy(dbDriver, club, user.UID)

@@ -101,6 +101,11 @@ func (h *ActionHandler) updateClub(c *gin.Context) {
 		return
 	}
 
+	if !currentUserClaim.Admin {
+		c.AbortWithStatus(http.StatusForbidden)
+		return
+	}
+
 	uid := c.Param("uid")
 	if uid == "" {
 		c.AbortWithError(http.StatusBadRequest, errors.New("uid can't be empty"))
@@ -108,12 +113,6 @@ func (h *ActionHandler) updateClub(c *gin.Context) {
 	club, err := models.FindClub(h.dbDriver, uid)
 	if err != nil {
 		c.AbortWithError(http.StatusNotFound, err)
-		return
-	}
-
-	canEdit := club.CanBeEditedBy(h.dbDriver, currentUserClaim.UID)
-	if !canEdit {
-		c.AbortWithStatus(http.StatusForbidden)
 		return
 	}
 
@@ -142,6 +141,11 @@ func (h *ActionHandler) deleteClub(c *gin.Context) {
 		return
 	}
 
+	if !currentUserClaim.Admin {
+		c.AbortWithStatus(http.StatusForbidden)
+		return
+	}
+
 	uid := c.Param("uid")
 	if uid == "" {
 		c.AbortWithError(http.StatusBadRequest, errors.New("uid can't be empty"))
@@ -152,13 +156,7 @@ func (h *ActionHandler) deleteClub(c *gin.Context) {
 		return
 	}
 
-	canEdit := club.CanBeEditedBy(h.dbDriver, currentUserClaim.UID)
-	if !canEdit {
-		c.AbortWithStatus(http.StatusForbidden)
-		return
-	}
-
-	err = db.DeleteNode(h.dbDriver, uid)
+	err = db.DeleteNode(h.dbDriver, club.UID.String())
 	if err != nil {
 		c.AbortWithError(http.StatusInternalServerError, err)
 		return
