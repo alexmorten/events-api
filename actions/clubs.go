@@ -42,15 +42,13 @@ func (h *ActionHandler) getClubs(c *gin.Context) {
 		c.AbortWithError(http.StatusInternalServerError, err)
 		return
 	}
-
-	result, err := dbSession.Run("match (n:Club) return properties(n)", nil)
+	records, err := neo4j.Collect(dbSession.Run("match (n:Club) return properties(n)", nil))
 	if err != nil {
 		c.AbortWithError(http.StatusInternalServerError, err)
 		return
 	}
 
-	for result.Next() {
-		record := result.Record()
+	for _, record := range records {
 		propInterface, ok := record.Get("properties(n)")
 		if ok {
 			props, ok := propInterface.(map[string]interface{})
