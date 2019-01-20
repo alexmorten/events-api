@@ -41,6 +41,10 @@ func (e *Event) NodeName() string {
 
 //EventFromProps tries to get struct fields from the neo4j record
 func EventFromProps(props map[string]interface{}) *Event {
+	if props == nil {
+		return nil
+	}
+
 	event := &Event{}
 
 	db.UnmarshalNeoFields(event, props)
@@ -48,11 +52,7 @@ func EventFromProps(props map[string]interface{}) *Event {
 }
 
 //CanBeEditedBy user with given uid
-func (e *Event) CanBeEditedBy(dbDriver neo4j.Driver, userUID uuid.UUID) (bool, error) {
+func (e *Event) CanBeEditedBy(dbDriver neo4j.Driver, userUID uuid.UUID) bool {
 	relationProps, err := db.FindRelation(dbDriver, e.UID.String(), userUID.String(), "CREATED_BY")
-	if err != nil {
-		return false, err
-	}
-
-	return relationProps != nil, nil
+	return err == nil && relationProps != nil
 }

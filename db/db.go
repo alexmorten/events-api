@@ -31,23 +31,21 @@ func Save(dbDriver neo4j.Driver, model Model) (props map[string]interface{}, err
 		return nil, err
 	}
 
-	var result neo4j.Result
+	var record neo4j.Record
 	if model.Created() {
-		result, err = dbSession.Run(fmt.Sprintf("create (n:%v {%v}) return properties(n)", model.NodeName(), NeoPropString(model)), MarshalNeoFields(model))
+		record, err = neo4j.Single(dbSession.Run(fmt.Sprintf("create (n:%v {%v}) return properties(n)", model.NodeName(), NeoPropString(model)), MarshalNeoFields(model)))
 	} else {
-		result, err = dbSession.Run(fmt.Sprintf("match (n:%v {uid: $uid}) set n = {%v} return properties(n)", model.NodeName(), NeoPropString(model)), MarshalNeoFields(model))
+		record, err = neo4j.Single(dbSession.Run(fmt.Sprintf("match (n:%v {uid: $uid}) set n = {%v} return properties(n)", model.NodeName(), NeoPropString(model)), MarshalNeoFields(model)))
 	}
 	if err != nil {
 		return nil, err
 	}
-	if result.Next() {
-		record := result.Record()
-		propInterface, ok := record.Get("properties(n)")
+
+	propInterface, ok := record.Get("properties(n)")
+	if ok {
+		props, ok := propInterface.(map[string]interface{})
 		if ok {
-			props, ok := propInterface.(map[string]interface{})
-			if ok {
-				return props, nil
-			}
+			return props, nil
 		}
 	}
 	return nil, errors.New("saving node went wrong")
@@ -61,18 +59,16 @@ func CreateBy(dbDriver neo4j.Driver, model Model, userUID uuid.UUID) (props map[
 	}
 	neoFields := MarshalNeoFields(model)
 	neoFields["user_uid"] = userUID.String()
-	result, err := dbSession.Run(fmt.Sprintf("match (u:User {uid: $user_uid}) create (n:%v {%v})-[r:CREATED_BY]->(u) return properties(n)", model.NodeName(), NeoPropString(model)), neoFields)
+	record, err := neo4j.Single(dbSession.Run(fmt.Sprintf("match (u:User {uid: $user_uid}) create (n:%v {%v})-[r:CREATED_BY]->(u) return properties(n)", model.NodeName(), NeoPropString(model)), neoFields))
 	if err != nil {
 		return nil, err
 	}
-	if result.Next() {
-		record := result.Record()
-		propInterface, ok := record.Get("properties(n)")
+
+	propInterface, ok := record.Get("properties(n)")
+	if ok {
+		props, ok := propInterface.(map[string]interface{})
 		if ok {
-			props, ok := propInterface.(map[string]interface{})
-			if ok {
-				return props, nil
-			}
+			return props, nil
 		}
 	}
 	return nil, errors.New("creating node went wrong")
@@ -84,18 +80,15 @@ func FindNode(dbDriver neo4j.Driver, uid string) (props map[string]interface{}, 
 	if err != nil {
 		return nil, err
 	}
-	result, err := dbSession.Run("match (n {uid: $uid}) return properties(n)", map[string]interface{}{"uid": uid})
+	record, err := neo4j.Single(dbSession.Run("match (n {uid: $uid}) return properties(n)", map[string]interface{}{"uid": uid}))
 	if err != nil {
 		return nil, err
 	}
-	if result.Next() {
-		record := result.Record()
-		propInterface, ok := record.Get("properties(n)")
+	propInterface, ok := record.Get("properties(n)")
+	if ok {
+		props, ok := propInterface.(map[string]interface{})
 		if ok {
-			props, ok := propInterface.(map[string]interface{})
-			if ok {
-				return props, nil
-			}
+			return props, nil
 		}
 	}
 	return nil, nil
@@ -108,22 +101,31 @@ func FindRelation(dbDriver neo4j.Driver, fromNodeUID, toNodeUID, relationName st
 		return nil, err
 	}
 
-	result, err := dbSession.Run(
+	record, err := neo4j.Single(dbSession.Run(
 		fmt.Sprintf("match (fromNode {uid: $from_uid})-[r:%v]->(toNode {uid: $to_uid}) return properties(r)", relationName),
 		map[string]interface{}{"from_uid": fromNodeUID, "to_uid": toNodeUID},
-	)
+	))
 	if err != nil {
 		return nil, err
 	}
-	if result.Next() {
-		record := result.Record()
-		propInterface, ok := record.Get("properties(r)")
+
+	propInterface, ok := record.Get("properties(r)")
+	if ok {
+		props, ok := propInterface.(map[string]interface{})
 		if ok {
-			props, ok := propInterface.(map[string]interface{})
-			if ok {
-				return props, nil
-			}
+			return props, nil
 		}
 	}
 	return nil, nil
+}
+
+//DeleteNode with given uid, detaching all relationships attached to it
+func DeleteNode(dbDriver neo4j.Driver, uid string) (err error) {
+	dbSession, err := dbDriver.Session(neo4j.AccessModeRead)
+	if err != nil {
+		return err
+	}
+
+	_, err = dbSession.Run("match (n {uid: $uid}) detach delete n", map[string]interface{}{"uid": uid})
+	return err
 }

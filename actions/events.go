@@ -14,9 +14,10 @@ import (
 //RegisterEventRoutes within the given router group
 func (h *ActionHandler) RegisterEventRoutes(group *gin.RouterGroup) {
 	group.GET("/:uid", h.getEvent)
-	group.PATCH("/:uid", h.updateEvent)
 	group.GET("", h.getEvents)
+	group.PATCH("/:uid", h.updateEvent)
 	group.POST("", h.postEvents)
+	group.DELETE("/:uid", h.deleteEvent)
 }
 
 func (h *ActionHandler) getEvent(c *gin.Context) {
@@ -107,11 +108,7 @@ func (h *ActionHandler) updateEvent(c *gin.Context) {
 		return
 	}
 
-	canEdit, err := event.CanBeEditedBy(h.dbDriver, currentUserClaim.UID)
-	if err != nil {
-		c.AbortWithError(http.StatusInternalServerError, err)
-		return
-	}
+	canEdit := event.CanBeEditedBy(h.dbDriver, currentUserClaim.UID)
 	if !canEdit {
 		c.AbortWithStatus(http.StatusForbidden)
 		return
@@ -133,4 +130,36 @@ func (h *ActionHandler) updateEvent(c *gin.Context) {
 	}
 
 	c.JSON(200, models.EventFromProps(eventProps))
+}
+
+func (h *ActionHandler) deleteEvent(c *gin.Context) {
+	currentUserClaim := h.currentUserClaim(c)
+	if currentUserClaim == nil {
+		c.AbortWithStatus(http.StatusUnauthorized)
+		return
+	}
+
+	uid := c.Param("uid")
+	if uid == "" {
+		c.AbortWithError(http.StatusBadRequest, errors.New("uid can't be empty"))
+	}
+	event, err := models.FindEvent(h.dbDriver, uid)
+	if err != nil {
+		c.AbortWithError(http.StatusNotFound, err)
+		return
+	}
+
+	canEdit := event.CanBeEditedBy(h.dbDriver, currentUserClaim.UID)
+	if !canEdit {
+		c.AbortWithStatus(http.StatusForbidden)
+		return
+	}
+
+	err = db.DeleteNode(h.dbDriver, uid)
+	if err != nil {
+		c.AbortWithError(http.StatusInternalServerError, err)
+		return
+	}
+
+	c.JSON(http.StatusNoContent, nil)
 }

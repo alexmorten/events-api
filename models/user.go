@@ -78,6 +78,10 @@ func FindUserByEmail(dbDriver neo4j.Driver, email string) (*User, error) {
 
 //UserFromProps tries to get struct fields from the neo4j record
 func UserFromProps(props map[string]interface{}) *User {
+	if props == nil {
+		return nil
+	}
+
 	user := &User{}
 	db.UnmarshalNeoFields(user, props)
 	return user
