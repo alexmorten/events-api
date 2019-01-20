@@ -11,16 +11,16 @@ import (
 	"github.com/neo4j/neo4j-go-driver/neo4j"
 )
 
-//RegisterEventRoutes within the given router group
-func (h *ActionHandler) RegisterEventRoutes(group *gin.RouterGroup) {
-	group.GET("/:uid", h.getEvent)
-	group.GET("", h.getEvents)
-	group.PATCH("/:uid", h.updateEvent)
-	group.POST("", h.postEvents)
-	group.DELETE("/:uid", h.deleteEvent)
+//RegisterClubRoutes within the given router group
+func (h *ActionHandler) RegisterClubRoutes(group *gin.RouterGroup) {
+	group.GET("/:uid", h.getClub)
+	group.GET("", h.getClubs)
+	group.PATCH("/:uid", h.updateClub)
+	group.POST("", h.postClubs)
+	group.DELETE("/:uid", h.deleteClub)
 }
 
-func (h *ActionHandler) getEvent(c *gin.Context) {
+func (h *ActionHandler) getClub(c *gin.Context) {
 	uid := c.Param("uid")
 	if uid == "" {
 		c.AbortWithError(http.StatusBadRequest, errors.New("uid can't be empty"))
@@ -34,62 +34,67 @@ func (h *ActionHandler) getEvent(c *gin.Context) {
 	c.JSON(200, event)
 }
 
-func (h *ActionHandler) getEvents(c *gin.Context) {
-	events := []*models.Event{}
+func (h *ActionHandler) getClubs(c *gin.Context) {
+	clubs := []*models.Club{}
 
 	dbSession, err := h.dbDriver.Session(neo4j.AccessModeRead)
 	if err != nil {
 		c.AbortWithError(http.StatusInternalServerError, err)
 		return
 	}
-
-	records, err := neo4j.Collect(dbSession.Run("match (n:Event) return properties(n)", nil))
+	records, err := neo4j.Collect(dbSession.Run("match (n:Club) return properties(n)", nil))
 	if err != nil {
 		c.AbortWithError(http.StatusInternalServerError, err)
 		return
 	}
+
 	for _, record := range records {
 		propInterface, ok := record.Get("properties(n)")
 		if ok {
 			props, ok := propInterface.(map[string]interface{})
 			if ok {
-				events = append(events, models.EventFromProps(props))
+				clubs = append(clubs, models.ClubFromProps(props))
 			}
 		}
 	}
-	c.JSON(http.StatusOK, events)
+	c.JSON(http.StatusOK, clubs)
 }
 
-func (h *ActionHandler) postEvents(c *gin.Context) {
+func (h *ActionHandler) postClubs(c *gin.Context) {
 	currentUserClaim := h.currentUserClaim(c)
 	if currentUserClaim == nil {
 		c.AbortWithStatus(http.StatusUnauthorized)
 		return
 	}
 
-	event := models.NewEvent()
-	eventAttributes := &models.EventAttributes{}
-	err := c.ShouldBindJSON(eventAttributes)
+	if !currentUserClaim.Admin {
+		c.AbortWithStatus(http.StatusForbidden)
+		return
+	}
+
+	club := models.NewClub()
+	clubAttributes := &models.ClubAttributes{}
+	err := c.ShouldBindJSON(clubAttributes)
 	if err != nil {
 		c.AbortWithError(http.StatusBadRequest, err)
 		return
 	}
-	event.EventAttributes = *eventAttributes
-	props, err := db.CreateBy(h.dbDriver, event, currentUserClaim.UID)
+	club.ClubAttributes = *clubAttributes
+	props, err := db.CreateBy(h.dbDriver, club, currentUserClaim.UID)
 	if err != nil {
 		c.AbortWithError(http.StatusInternalServerError, err)
 		return
 	}
 
-	createdEvent := models.EventFromProps(props)
-	c.JSON(http.StatusCreated, createdEvent)
+	createdclub := models.ClubFromProps(props)
+	c.JSON(http.StatusCreated, createdclub)
 }
 
-type eventAttributesUpdate struct {
+type clubAttributesUpdate struct {
 	Name *string `json:"name"`
 }
 
-func (h *ActionHandler) updateEvent(c *gin.Context) {
+func (h *ActionHandler) updateClub(c *gin.Context) {
 	currentUserClaim := h.currentUserClaim(c)
 	if currentUserClaim == nil {
 		c.AbortWithStatus(http.StatusUnauthorized)
@@ -100,37 +105,37 @@ func (h *ActionHandler) updateEvent(c *gin.Context) {
 	if uid == "" {
 		c.AbortWithError(http.StatusBadRequest, errors.New("uid can't be empty"))
 	}
-	event, err := models.FindEvent(h.dbDriver, uid)
+	club, err := models.FindClub(h.dbDriver, uid)
 	if err != nil {
 		c.AbortWithError(http.StatusNotFound, err)
 		return
 	}
 
-	canEdit := event.CanBeEditedBy(h.dbDriver, currentUserClaim.UID)
+	canEdit := club.CanBeEditedBy(h.dbDriver, currentUserClaim.UID)
 	if !canEdit {
 		c.AbortWithStatus(http.StatusForbidden)
 		return
 	}
 
-	updateAttributes := &eventAttributesUpdate{}
+	updateAttributes := &clubAttributesUpdate{}
 	err = c.ShouldBindJSON(updateAttributes)
 	if err != nil {
 		c.AbortWithError(http.StatusBadRequest, err)
 		return
 	}
 
-	models.UpdateFrom(&event.EventAttributes, updateAttributes)
+	models.UpdateFrom(&club.ClubAttributes, updateAttributes)
 
-	eventProps, err := db.Save(h.dbDriver, event)
+	clubProps, err := db.Save(h.dbDriver, club)
 	if err != nil {
 		c.AbortWithError(http.StatusInternalServerError, err)
 		return
 	}
 
-	c.JSON(200, models.EventFromProps(eventProps))
+	c.JSON(200, models.ClubFromProps(clubProps))
 }
 
-func (h *ActionHandler) deleteEvent(c *gin.Context) {
+func (h *ActionHandler) deleteClub(c *gin.Context) {
 	currentUserClaim := h.currentUserClaim(c)
 	if currentUserClaim == nil {
 		c.AbortWithStatus(http.StatusUnauthorized)
@@ -141,13 +146,13 @@ func (h *ActionHandler) deleteEvent(c *gin.Context) {
 	if uid == "" {
 		c.AbortWithError(http.StatusBadRequest, errors.New("uid can't be empty"))
 	}
-	event, err := models.FindEvent(h.dbDriver, uid)
+	club, err := models.FindClub(h.dbDriver, uid)
 	if err != nil {
 		c.AbortWithError(http.StatusNotFound, err)
 		return
 	}
 
-	canEdit := event.CanBeEditedBy(h.dbDriver, currentUserClaim.UID)
+	canEdit := club.CanBeEditedBy(h.dbDriver, currentUserClaim.UID)
 	if !canEdit {
 		c.AbortWithStatus(http.StatusForbidden)
 		return

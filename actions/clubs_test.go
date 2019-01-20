@@ -20,7 +20,7 @@ import (
 	"github.com/alexmorten/events-api/db"
 )
 
-func Test_Events(t *testing.T) {
+func Test_Clubs(t *testing.T) {
 	dbDriver := db.NewDB()
 	s := api.NewServer("")
 	s.Init()
@@ -30,66 +30,77 @@ func Test_Events(t *testing.T) {
 		w := httptest.NewRecorder()
 		body := `{"name":"blubbi di blup"}`
 		reader := bytes.NewReader([]byte(body))
-		req, _ := http.NewRequest("POST", "/events", reader)
+		req, _ := http.NewRequest("POST", "/clubs", reader)
 
 		s.Engine.ServeHTTP(w, req)
 		require.Equal(t, http.StatusUnauthorized, w.Code)
 	})
 
-	t.Run("can create and get an event", func(t *testing.T) {
+	t.Run("admins can create and get a club", func(t *testing.T) {
 		testhelpers.Clear(dbDriver)
 		w := httptest.NewRecorder()
 		body := `{"name":"blubbi di blup"}`
 		reader := bytes.NewReader([]byte(body))
-		req, _ := http.NewRequest("POST", "/events", reader)
+		req, _ := http.NewRequest("POST", "/clubs", reader)
 
 		testhelpers.AddSomeAuthorization(dbDriver, req)
+		s.Engine.ServeHTTP(w, req)
+		require.Equal(t, http.StatusForbidden, w.Code)
+
+		w = httptest.NewRecorder()
+		user := testhelpers.CreateAdminUser(dbDriver)
+		body = `{"name":"blubbi di blup"}`
+		reader = bytes.NewReader([]byte(body))
+		req, _ = http.NewRequest("POST", "/clubs", reader)
+
+		testhelpers.AddAuthorizationHeader(req, user)
 		s.Engine.ServeHTTP(w, req)
 		require.Equal(t, http.StatusCreated, w.Code)
 
 		w = httptest.NewRecorder()
-		req, _ = http.NewRequest("GET", "/events", nil)
+		req, _ = http.NewRequest("GET", "/clubs", nil)
 		s.Engine.ServeHTTP(w, req)
 
 		require.Equal(t, http.StatusOK, w.Code)
-		events := &[]models.Event{}
-		err := json.Unmarshal(w.Body.Bytes(), events)
+		clubs := &[]models.Club{}
+		err := json.Unmarshal(w.Body.Bytes(), clubs)
 		require.NoError(t, err)
-		require.Len(t, *events, 1)
-		require.Equal(t, (*events)[0].Name, "blubbi di blup")
+		require.Len(t, *clubs, 1)
+		require.Equal(t, (*clubs)[0].Name, "blubbi di blup")
 	})
 
-	t.Run("POSTS to /events cannot set the uid", func(t *testing.T) {
+	t.Run("POSTS to /clubs cannot set the uid", func(t *testing.T) {
 		testhelpers.Clear(dbDriver)
 		w := httptest.NewRecorder()
 		body := `{"name":"blubbi di blup", "uid": "6ec69d34-2abe-4072-bf70-c423f342da73"}`
 		reader := bytes.NewReader([]byte(body))
-		req, _ := http.NewRequest("POST", "/events", reader)
+		req, _ := http.NewRequest("POST", "/clubs", reader)
 
-		testhelpers.AddSomeAuthorization(dbDriver, req)
+		user := testhelpers.CreateAdminUser(dbDriver)
+		testhelpers.AddAuthorizationHeader(req, user)
 		s.Engine.ServeHTTP(w, req)
 		require.Equal(t, http.StatusCreated, w.Code)
 
-		event := &models.Event{}
-		err := json.Unmarshal(w.Body.Bytes(), event)
+		club := &models.Club{}
+		err := json.Unmarshal(w.Body.Bytes(), club)
 		require.NoError(t, err)
 
-		assert.NotEqual(t, "6ec69d34-2abe-4072-bf70-c423f342da73", event.UID.String())
+		assert.NotEqual(t, "6ec69d34-2abe-4072-bf70-c423f342da73", club.UID.String())
 	})
 
-	t.Run("can update an event", func(t *testing.T) {
+	t.Run("can update a club", func(t *testing.T) {
 		testhelpers.Clear(dbDriver)
-		user := testhelpers.CreateSomeUser(dbDriver)
-		event := models.NewEvent()
-		event.Name = "Before"
-		props, err := db.CreateBy(dbDriver, event, user.UID)
+		user := testhelpers.CreateAdminUser(dbDriver)
+		club := models.NewClub()
+		club.Name = "Before"
+		props, err := db.CreateBy(dbDriver, club, user.UID)
 		require.NoError(t, err)
-		eventUID := props["uid"].(string)
+		clubUID := props["uid"].(string)
 
 		w := httptest.NewRecorder()
 		body := `{"name":"Should not be accepted"}`
 		reader := bytes.NewReader([]byte(body))
-		req, _ := http.NewRequest("PATCH", "/events/"+eventUID, reader)
+		req, _ := http.NewRequest("PATCH", "/clubs/"+clubUID, reader)
 
 		testhelpers.AddSomeAuthorization(dbDriver, req)
 		s.Engine.ServeHTTP(w, req)
@@ -98,44 +109,44 @@ func Test_Events(t *testing.T) {
 		w = httptest.NewRecorder()
 		body = `{"name":"After"}`
 		reader = bytes.NewReader([]byte(body))
-		req, _ = http.NewRequest("PATCH", "/events/"+eventUID, reader)
+		req, _ = http.NewRequest("PATCH", "/clubs/"+clubUID, reader)
 
 		testhelpers.AddAuthorizationHeader(req, user)
 		s.Engine.ServeHTTP(w, req)
 		require.Equal(t, http.StatusOK, w.Code)
 
-		updatedEvent := &models.Event{}
-		err = json.Unmarshal(w.Body.Bytes(), updatedEvent)
+		updatedClub := &models.Club{}
+		err = json.Unmarshal(w.Body.Bytes(), updatedClub)
 		require.NoError(t, err)
-		assert.Equal(t, "After", updatedEvent.Name)
+		assert.Equal(t, "After", updatedClub.Name)
 	})
 
-	t.Run("can delete an event", func(t *testing.T) {
+	t.Run("can delete a club", func(t *testing.T) {
 		testhelpers.Clear(dbDriver)
 		user := testhelpers.CreateSomeUser(dbDriver)
-		event := models.NewEvent()
-		event.Name = "Before"
-		props, err := db.CreateBy(dbDriver, event, user.UID)
+		club := models.NewClub()
+		club.Name = "Before"
+		props, err := db.CreateBy(dbDriver, club, user.UID)
 		require.NoError(t, err)
-		eventUID := props["uid"].(string)
+		clubUID := props["uid"].(string)
 
 		w := httptest.NewRecorder()
-		req, _ := http.NewRequest("DELETE", "/events/"+eventUID, nil)
+		req, _ := http.NewRequest("DELETE", "/clubs/"+clubUID, nil)
 
 		testhelpers.AddSomeAuthorization(dbDriver, req)
 		s.Engine.ServeHTTP(w, req)
 		require.Equal(t, http.StatusForbidden, w.Code)
 
 		w = httptest.NewRecorder()
-		req, _ = http.NewRequest("DELETE", "/events/"+eventUID, nil)
+		req, _ = http.NewRequest("DELETE", "/clubs/"+clubUID, nil)
 
 		testhelpers.AddAuthorizationHeader(req, user)
 		s.Engine.ServeHTTP(w, req)
 		require.Equal(t, http.StatusNoContent, w.Code)
 
 		time.Sleep(50 * time.Millisecond)
-		foundEvent, err := models.FindEvent(dbDriver, eventUID)
+		foundClub, err := models.FindEvent(dbDriver, clubUID)
 		assert.Error(t, err)
-		assert.Nil(t, foundEvent)
+		assert.Nil(t, foundClub)
 	})
 }
