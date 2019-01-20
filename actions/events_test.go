@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 
@@ -108,5 +109,34 @@ func Test_Events(t *testing.T) {
 		err = json.Unmarshal(w.Body.Bytes(), updatedEvent)
 		require.NoError(t, err)
 		assert.Equal(t, "After", updatedEvent.Name)
+	})
+
+	t.Run("can delete an event", func(t *testing.T) {
+		testhelpers.Clear(dbDriver)
+		user := testhelpers.CreateSomeUser(dbDriver)
+		event := models.NewEvent()
+		event.Name = "Before"
+		props, err := db.CreateBy(dbDriver, event, user.UID)
+		require.NoError(t, err)
+		eventUID := props["uid"].(string)
+
+		w := httptest.NewRecorder()
+		req, _ := http.NewRequest("DELETE", "/events/"+eventUID, nil)
+
+		testhelpers.AddSomeAuthorization(dbDriver, req)
+		s.Engine.ServeHTTP(w, req)
+		require.Equal(t, http.StatusForbidden, w.Code)
+
+		w = httptest.NewRecorder()
+		req, _ = http.NewRequest("DELETE", "/events/"+eventUID, nil)
+
+		testhelpers.AddAuthorizationHeader(req, user)
+		s.Engine.ServeHTTP(w, req)
+		require.Equal(t, http.StatusNoContent, w.Code)
+
+		time.Sleep(50 * time.Millisecond)
+		foundEvent, err := models.FindEvent(dbDriver, eventUID)
+		assert.Error(t, err)
+		assert.Nil(t, foundEvent)
 	})
 }
