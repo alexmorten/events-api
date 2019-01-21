@@ -6,6 +6,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/neo4j/neo4j-go-driver/neo4j"
+
 	"github.com/alexmorten/events-api/utils"
 
 	"github.com/google/uuid"
@@ -14,6 +16,7 @@ import (
 var timeType = reflect.TypeOf(time.Time{})
 var stringType = reflect.TypeOf("")
 var uuidType = reflect.TypeOf(uuid.UUID{})
+var localDateTimeType = reflect.TypeOf(neo4j.LocalDateTime{})
 
 //UnmarshalNeoFields of the given interface
 //interface should be a pointer to some struct
@@ -37,13 +40,9 @@ func UnmarshalNeoFields(obj interface{}, props map[string]interface{}) {
 					}
 				}
 			case timeType:
-				if propType == stringType {
-					timeValue, err := time.Parse("2006-01-02 15:04:05.999999999 -0700 MST", prop.(string))
-					if err == nil {
-						field.Set(reflect.ValueOf(timeValue))
-					} else {
-						fmt.Println(err)
-					}
+				if propType == localDateTimeType {
+					localDateTime := prop.(neo4j.LocalDateTime)
+					field.Set(reflect.ValueOf(localDateTime.Time()))
 				}
 			}
 		}
@@ -61,7 +60,7 @@ func MarshalNeoFields(obj interface{}) map[string]interface{} {
 			props[tag] = uid.String()
 		case time.Time:
 			timeValue := fieldInterface.(time.Time)
-			props[tag] = timeValue.Format("2006-01-02 15:04:05.999999999 -0700 MST")
+			props[tag] = neo4j.LocalDateTimeOf(timeValue)
 		default:
 			props[tag] = fieldInterface
 		}

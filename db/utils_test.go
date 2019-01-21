@@ -4,6 +4,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/neo4j/neo4j-go-driver/neo4j"
+
 	"github.com/google/uuid"
 
 	"github.com/alexmorten/events-api/db"
@@ -27,7 +29,7 @@ func Test_UnmarshalNeoFields(t *testing.T) {
 	props := map[string]interface{}{
 		"a":   "123",
 		"b":   123,
-		"c":   time.Time{}.Format("2006-01-02 15:04:05.999999999 -0700 MST"),
+		"c":   time.Time{},
 		"D":   "1234",
 		"uid": uid.String(),
 	}
@@ -53,7 +55,7 @@ func Test_MarshalNeoFields(t *testing.T) {
 	props := db.MarshalNeoFields(m)
 	assert.Equal(t, "123", props["a"])
 	assert.Equal(t, 123, props["b"])
-	assert.Equal(t, timeValue.Format("2006-01-02 15:04:05.999999999 -0700 MST"), props["c"])
+	assert.Equal(t, neo4j.LocalDateTimeOf(timeValue), props["c"])
 	assert.Equal(t, uid.String(), props["uid"])
 	assert.Equal(t, nil, props["d"])
 }
