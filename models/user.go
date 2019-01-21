@@ -30,6 +30,14 @@ type User struct {
 	Location    string `json:"location" neo:"location"`
 }
 
+//PublicUserAttributes that can be shared with the users
+type PublicUserAttributes struct {
+	UID       uuid.UUID `json:"uid"`
+	Email     string    `json:"email"`
+	Name      string    `json:"name"`
+	AvatarURL string    `json:"avatar_url"`
+}
+
 //NewUser ...
 func NewUser() *User {
 	return &User{
@@ -107,6 +115,16 @@ func (u *User) UpdateFromGothUser(gothUser goth.User) {
 	u.UserID = gothUser.UserID
 	u.AvatarURL = gothUser.AvatarURL
 	u.Location = gothUser.Location
+}
+
+//PublicAttributes of user
+func (u *User) PublicAttributes() PublicUserAttributes {
+	return PublicUserAttributes{
+		UID:       u.UID,
+		Name:      u.Name,
+		Email:     u.Email,
+		AvatarURL: u.AvatarURL,
+	}
 }
 
 //Claim returns a claim for jwt

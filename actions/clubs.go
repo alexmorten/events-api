@@ -4,6 +4,8 @@ import (
 	"errors"
 	"net/http"
 
+	"github.com/google/uuid"
+
 	"github.com/alexmorten/events-api/db"
 
 	"github.com/alexmorten/events-api/models"
@@ -18,6 +20,9 @@ func (h *ActionHandler) RegisterClubRoutes(group *gin.RouterGroup) {
 	group.PATCH("/:uid", h.updateClub)
 	group.POST("", h.postClubs)
 	group.DELETE("/:uid", h.deleteClub)
+
+	group.GET("/:uid/admins", h.getAdmins)
+	group.POST("/:uid/admins", h.postAdmins)
 }
 
 func (h *ActionHandler) getClub(c *gin.Context) {
@@ -163,4 +168,89 @@ func (h *ActionHandler) deleteClub(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusNoContent, nil)
+}
+
+func (h *ActionHandler) getAdmins(c *gin.Context) {
+	currentUserClaim := h.currentUserClaim(c)
+	if currentUserClaim == nil {
+		c.AbortWithStatus(http.StatusUnauthorized)
+		return
+	}
+
+	if !currentUserClaim.Admin {
+		c.AbortWithStatus(http.StatusForbidden)
+		return
+	}
+
+	uid := c.Param("uid")
+	if uid == "" {
+		c.AbortWithError(http.StatusBadRequest, errors.New("uid can't be empty"))
+	}
+
+	clubAdminsAttributes := []models.PublicUserAttributes{}
+
+	dbSession, err := h.dbDriver.Session(neo4j.AccessModeRead)
+	if err != nil {
+		c.AbortWithError(http.StatusInternalServerError, err)
+		return
+	}
+
+	records, err := neo4j.Collect(
+		dbSession.Run(
+			"match (u:User)-[:ADMINISTERS]->(c:Club {uid: $uid}) return properties(u)",
+			map[string]interface{}{"uid": uid},
+		),
+	)
+	if err != nil {
+		c.AbortWithError(http.StatusInternalServerError, err)
+		return
+	}
+
+	for _, record := range records {
+		propInterface, ok := record.Get("properties(u)")
+		if ok {
+			props, ok := propInterface.(map[string]interface{})
+			if ok {
+				clubAdminsAttributes = append(clubAdminsAttributes, models.UserFromProps(props).PublicAttributes())
+			}
+		}
+	}
+	c.JSON(http.StatusOK, clubAdminsAttributes)
+}
+
+type userPromotionAttributes struct {
+	UID uuid.UUID `json:"uid"`
+}
+
+func (h *ActionHandler) postAdmins(c *gin.Context) {
+	currentUserClaim := h.currentUserClaim(c)
+	if currentUserClaim == nil {
+		c.AbortWithStatus(http.StatusUnauthorized)
+		return
+	}
+
+	if !currentUserClaim.Admin {
+		c.AbortWithStatus(http.StatusForbidden)
+		return
+	}
+
+	uid, err := uuid.Parse(c.Param("uid"))
+	if err != nil {
+		c.AbortWithError(http.StatusBadRequest, err)
+	}
+
+	userPromotion := &userPromotionAttributes{}
+	err = c.ShouldBindJSON(userPromotion)
+	if err != nil {
+		c.AbortWithError(http.StatusBadRequest, err)
+		return
+	}
+
+	err = models.AddAdminToClub(h.dbDriver, uid, userPromotion.UID)
+	if err != nil {
+		c.AbortWithError(http.StatusInternalServerError, err)
+		return
+	}
+
+	c.JSON(http.StatusCreated, nil)
 }

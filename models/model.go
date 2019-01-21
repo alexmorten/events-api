@@ -9,6 +9,17 @@ import (
 	"github.com/google/uuid"
 )
 
+//RelationLabel for neo4j labels
+type RelationLabel string
+
+const (
+	//ModelCreatedByUser to show who created what thing
+	ModelCreatedByUser RelationLabel = "CREATED_BY"
+
+	//UserAdministersClub can add groups and events to club
+	UserAdministersClub = "ADMINISTERS"
+)
+
 //Model is the base for all models
 type Model struct {
 	UID       uuid.UUID `json:"uid" neo:"uid"`
