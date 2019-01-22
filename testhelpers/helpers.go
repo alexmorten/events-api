@@ -4,6 +4,8 @@ import (
 	"net/http"
 	"os"
 
+	"github.com/Pallinder/go-randomdata"
+
 	"github.com/alexmorten/events-api/db"
 	"github.com/alexmorten/events-api/models"
 	jwt "github.com/dgrijalva/jwt-go"
@@ -21,7 +23,7 @@ func Clear(dbDriver neo4j.Driver) {
 //CreateSomeUser and return it
 func CreateSomeUser(dbDriver neo4j.Driver) *models.User {
 	user := models.NewUser()
-
+	user.Email = randomdata.Email()
 	_, err := db.Save(dbDriver, user)
 	panicOnErr(err)
 	return user
@@ -31,6 +33,7 @@ func CreateSomeUser(dbDriver neo4j.Driver) *models.User {
 func CreateAdminUser(dbDriver neo4j.Driver) *models.User {
 	user := models.NewUser()
 	user.Admin = true
+	user.Email = randomdata.Email()
 	_, err := db.Save(dbDriver, user)
 	panicOnErr(err)
 	return user

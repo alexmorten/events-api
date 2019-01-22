@@ -8,6 +8,8 @@ import (
 	"os"
 	"strings"
 
+	"github.com/alexmorten/events-api/db"
+
 	cors "github.com/rs/cors/wrapper/gin"
 
 	"github.com/alexmorten/events-api/models"
@@ -33,7 +35,10 @@ func NewServer(address string) *Server {
 
 //Init the Server
 func (s *Server) Init() {
-	actionHandler := actions.NewActionHandler()
+	dbDriver := db.Driver()
+	db.MustCreateConstraints(dbDriver)
+	actionHandler := actions.NewActionHandler(dbDriver)
+
 	s.Engine = gin.Default()
 	s.Engine.Use(cors.AllowAll())
 	rootGroup := s.Engine.Group("/", jwtHandler)

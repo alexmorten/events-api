@@ -1,7 +1,6 @@
 package actions
 
 import (
-	"github.com/alexmorten/events-api/db"
 	"github.com/alexmorten/events-api/models"
 	"github.com/gin-gonic/gin"
 	"github.com/neo4j/neo4j-go-driver/neo4j"
@@ -13,9 +12,9 @@ type ActionHandler struct {
 }
 
 //NewActionHandler ...
-func NewActionHandler() *ActionHandler {
+func NewActionHandler(dbDriver neo4j.Driver) *ActionHandler {
 	return &ActionHandler{
-		dbDriver: db.NewDB(),
+		dbDriver: dbDriver,
 	}
 }
 

@@ -21,7 +21,7 @@ import (
 )
 
 func Test_Events(t *testing.T) {
-	dbDriver := db.NewDB()
+	dbDriver := db.Driver()
 	s := api.NewServer("")
 	s.Init()
 	t.Run("unauthorized requests return 401", func(t *testing.T) {
