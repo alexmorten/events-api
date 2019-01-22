@@ -2,6 +2,7 @@ package models
 
 import (
 	"github.com/alexmorten/events-api/db"
+	"github.com/google/uuid"
 	"github.com/neo4j/neo4j-go-driver/neo4j"
 )
 
@@ -48,4 +49,10 @@ func ClubFromProps(props map[string]interface{}) *Club {
 
 	db.UnmarshalNeoFields(club, props)
 	return club
+}
+
+//AddAdminToClub ...
+func AddAdminToClub(dbDriver neo4j.Driver, clubUID, userUID uuid.UUID) error {
+	_, err := db.CreateRelation(dbDriver, userUID, clubUID, UserAdministersClub)
+	return err
 }

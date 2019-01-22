@@ -129,3 +129,38 @@ func DeleteNode(dbDriver neo4j.Driver, uid string) (err error) {
 	_, err = dbSession.Run("match (n {uid: $uid}) detach delete n", map[string]interface{}{"uid": uid})
 	return err
 }
+
+//CreateRelation creates the model node together with a relationship to a user with the given id
+func CreateRelation(dbDriver neo4j.Driver, fromUID, toUID uuid.UUID, relationName string) (props map[string]interface{}, err error) {
+	dbSession, err := dbDriver.Session(neo4j.AccessModeWrite)
+	if err != nil {
+		return nil, err
+	}
+
+	record, err := neo4j.Single(dbSession.Run(
+		fmt.Sprintf(
+			`
+			match (from_n {uid: $from_uid}), (to_n {uid: $to_uid})
+			create (from_n)-[r:%v]->(to_n)
+			return properties(r)
+			`,
+			relationName,
+		),
+		map[string]interface{}{
+			"from_uid": fromUID.String(),
+			"to_uid":   toUID.String(),
+		},
+	))
+	if err != nil {
+		return nil, err
+	}
+
+	propInterface, ok := record.Get("properties(r)")
+	if ok {
+		props, ok := propInterface.(map[string]interface{})
+		if ok {
+			return props, nil
+		}
+	}
+	return nil, errors.New("creating relation went wrong")
+}

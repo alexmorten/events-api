@@ -3,6 +3,7 @@ package actions_test
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -148,5 +149,54 @@ func Test_Clubs(t *testing.T) {
 		foundClub, err := models.FindEvent(dbDriver, clubUID)
 		assert.Error(t, err)
 		assert.Nil(t, foundClub)
+	})
+
+	t.Run("global admins can add a club admin", func(t *testing.T) {
+		testhelpers.Clear(dbDriver)
+		userToPromoted := testhelpers.CreateSomeUser(dbDriver)
+		nonAdminUser := testhelpers.CreateSomeUser(dbDriver)
+		adminUser := testhelpers.CreateAdminUser(dbDriver)
+		club := models.NewClub()
+		_, err := db.Save(dbDriver, club)
+		require.NoError(t, err)
+
+		w := httptest.NewRecorder()
+		body := fmt.Sprintf(`{"uid": "%v"}`, userToPromoted.UID.String())
+		reader := bytes.NewReader([]byte(body))
+		req, _ := http.NewRequest("POST", fmt.Sprintf("/clubs/%v/admins", club.UID.String()), reader)
+
+		testhelpers.AddAuthorizationHeader(req, nonAdminUser)
+		s.Engine.ServeHTTP(w, req)
+		require.Equal(t, http.StatusForbidden, w.Code)
+
+		w = httptest.NewRecorder()
+		reader = bytes.NewReader([]byte(body))
+		req, _ = http.NewRequest("POST", fmt.Sprintf("/clubs/%v/admins", club.UID.String()), reader)
+
+		testhelpers.AddAuthorizationHeader(req, adminUser)
+		s.Engine.ServeHTTP(w, req)
+		require.Equal(t, http.StatusCreated, w.Code)
+
+		//GET /admins
+
+		w = httptest.NewRecorder()
+		req, _ = http.NewRequest("GET", fmt.Sprintf("/clubs/%v/admins", club.UID.String()), nil)
+		testhelpers.AddAuthorizationHeader(req, nonAdminUser)
+		s.Engine.ServeHTTP(w, req)
+		require.Equal(t, http.StatusForbidden, w.Code)
+
+		time.Sleep(50 * time.Millisecond)
+
+		w = httptest.NewRecorder()
+		req, _ = http.NewRequest("GET", fmt.Sprintf("/clubs/%v/admins", club.UID.String()), nil)
+		testhelpers.AddAuthorizationHeader(req, adminUser)
+		s.Engine.ServeHTTP(w, req)
+		require.Equal(t, http.StatusOK, w.Code)
+
+		users := &[]models.PublicUserAttributes{}
+		err = json.Unmarshal(w.Body.Bytes(), users)
+		require.NoError(t, err)
+		require.Len(t, *users, 1)
+		require.Equal(t, userToPromoted.UID, (*users)[0].UID)
 	})
 }
