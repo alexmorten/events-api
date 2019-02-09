@@ -13,3 +13,11 @@ run:
 
 image:
 	docker build -t events-api .
+
+image-dev:
+	docker build -t events-api-dev . -f Dockerfile.dev
+
+docker-db-run:
+	docker run -d --rm -v neo4j-data:/data -p 7474:7474 -p 7687:7687 --env=NEO4J_dbms_security_auth__enabled=false --network host neo4j:3.5.1
+docker-api-run:
+	docker run --rm -p 3000:3000 --network host events-api-dev
