@@ -11,7 +11,7 @@ import (
 
 //Driver creates a connection to neo4j
 func Driver() neo4j.Driver {
-	driver, err := neo4j.NewDriver("bolt://localhost:7687", neo4j.BasicAuth("username", "password", ""))
+	driver, err := neo4j.NewDriver("bolt://localhost:7687", neo4j.NoAuth())
 	if err != nil {
 		panic(err) // handle error
 	}
@@ -35,7 +35,7 @@ func Save(dbDriver neo4j.Driver, model Model) (props map[string]interface{}, err
 	if model.Created() {
 		record, err = neo4j.Single(dbSession.Run(fmt.Sprintf("create (n:%v {%v}) return properties(n)", model.NodeName(), NeoPropString(model)), MarshalNeoFields(model)))
 	} else {
-		record, err = neo4j.Single(dbSession.Run(fmt.Sprintf("match (n:%v {uid: $uid}) set n = {%v} return properties(n)", model.NodeName(), NeoPropString(model)), MarshalNeoFields(model)))
+		record, err = neo4j.Single(dbSession.Run(fmt.Sprintf("match (n:%v {uid: $uid}) set n += {%v} return properties(n)", model.NodeName(), NeoPropString(model)), MarshalNeoFields(model)))
 	}
 	if err != nil {
 		return nil, err

@@ -1,3 +1,4 @@
 vendor
 .env
 neo4j-data
+esdata
