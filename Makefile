@@ -6,15 +6,13 @@ test:
 	go test ./...
 
 neo4j-dev:
-	docker run --rm \
-		-v neo4j-data:/data \
-		-v neo4j-plugins:/plugins \
-		-p 7474:7474 \
-		-p 7687:7687 \
-		--env=NEO4J_dbms_security_auth__enabled=false \
-		--env=NEO4J_elasticsearch_host__name=http://localhost:9200 \
-		--env=NEO4J_elasticsearch_index__spec='clubs:Club(name, uid)' \
-		neo4j:3.5.1
+	docker-compose up -d elastic
+	sleep 30
+	docker-compose up -d neo4j kibana
+
+clear-data:
+	rm -R esdata
+	rm -R neo4j-data
 
 run:
 	SESSION_SECRET="1234567890" go run main/api.go

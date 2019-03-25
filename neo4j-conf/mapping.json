@@ -1,0 +1,24 @@
+{
+  "defaults": {
+    "key_property": "uid",
+    "nodes_index": "neo4j-index-node",
+    "relationships_index": "neo4j-index-relationship",
+    "include_remaining_properties": true
+  },
+  "node_mappings": [{
+    "condition": "allNodes()",
+    "type": "nodes",
+    "properties": {
+      "labels": "getLabels()"
+    }
+  }],
+  "relationship_mappings": [{
+    "condition": "allRelationships()",
+    "type": "relationships",
+    "properties": {
+      "labels": "getType()",
+      "start_node_uid": "getStartNode().getProperty('uid')",
+      "end_node_uid": "getEndNode().getProperty('uid')"
+    }
+  }]
+}
