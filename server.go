@@ -1,6 +1,7 @@
 package api
 
 import (
+	"github.com/alexmorten/events-api/search"
 	"errors"
 	"fmt"
 	"log"
@@ -37,7 +38,10 @@ func NewServer(address string) *Server {
 func (s *Server) Init() {
 	dbDriver := db.Driver()
 	db.MustCreateConstraints(dbDriver)
-	actionHandler := actions.NewActionHandler(dbDriver)
+
+	searchClient :=  mustCreateSearchClient()
+
+	actionHandler := actions.NewActionHandler(dbDriver, searchClient)
 
 	s.Engine = gin.Default()
 	s.Engine.Use(cors.AllowAll())
@@ -90,4 +94,12 @@ func tokenFromBearer(bearer string) string {
 		return bearer[7:]
 	}
 	return ""
+}
+
+func mustCreateSearchClient()*search.Client{
+	client, err := search.NewClient("http://0.0.0.0:9200")
+	if err != nil {
+		panic(err)
+	}
+	return client
 }
