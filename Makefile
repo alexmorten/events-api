@@ -6,10 +6,16 @@ test:
 	go test ./...
 
 neo4j-dev:
-	docker run --rm -v neo4j-data:/data -p 7474:7474 -p 7687:7687 --env=NEO4J_dbms_security_auth__enabled=false neo4j:3.5.1
+	docker-compose up -d elastic
+	sleep 30
+	docker-compose up -d neo4j kibana
+
+clear-data:
+	rm -R esdata
+	rm -R neo4j-data
 
 run:
-	SESSION_SECRET="1234567890" go run main/api.go
+	SESSION_SECRET="1234567890" go run cmd/server/api.go
 
 image:
 	docker build -t events-api .

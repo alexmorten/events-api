@@ -1,0 +1,34 @@
+version: "3"
+services:
+  neo4j:
+    image: neo4j:3.5.1
+    container_name: neo4j
+    volumes:
+      - ./neo4j-data:/data
+      - ./neo4j-plugins:/plugins
+      - ./neo4j-conf:/conf
+    ports:
+      - "7474:7474"
+      - "7687:7687"
+    depends_on:
+      - "elastic"
+  elastic:
+    image: docker.elastic.co/elasticsearch/elasticsearch:6.6.2
+    environment:
+      - discovery.type=single-node
+    container_name: elasticsearch
+    ports:
+      - "9200:9200"
+      - "9300:9300"
+    volumes:
+      - ./esdata:/usr/share/elasticsearch/data
+  kibana:
+    image: docker.elastic.co/kibana/kibana:6.6.2
+    environment:
+      SERVER_NAME: kibana.example.org
+      ELASTICSEARCH_HOSTS: http://elastic:9200
+    container_name: kibana
+    ports:
+      - "5601:5601"
+    depends_on:
+      - "elastic"
