@@ -10,7 +10,7 @@ RUN cmake -D CMAKE_BUILD_TYPE=Release -D CMAKE_INSTALL_LIBDIR=lib .. && cmake --
 
 WORKDIR /go/src/github.com/alexmorten/events-api
 COPY . .
-RUN GO111MODULE=on GOOS=linux go build --tags seabolt_static -o api main/api.go
+RUN GO111MODULE=on GOOS=linux go build --tags seabolt_static -o api cmd/server.api.go
 
 FROM alpine:latest
 RUN apk --no-cache add ca-certificates

@@ -15,7 +15,7 @@ clear-data:
 	rm -R neo4j-data
 
 run:
-	SESSION_SECRET="1234567890" go run main/api.go
+	SESSION_SECRET="1234567890" go run cmd/server/api.go
 
 image:
 	docker build -t events-api .
