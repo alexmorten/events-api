@@ -10,8 +10,8 @@ import (
 )
 
 //Driver creates a connection to neo4j
-func Driver() neo4j.Driver {
-	driver, err := neo4j.NewDriver("bolt://localhost:7687", neo4j.NoAuth())
+func Driver(neo4jAddress string) neo4j.Driver {
+	driver, err := neo4j.NewDriver(neo4jAddress, neo4j.NoAuth())
 	if err != nil {
 		panic(err) // handle error
 	}

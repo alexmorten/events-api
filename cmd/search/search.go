@@ -8,7 +8,7 @@ import (
 )
 
 func main() {
-	client, err := search.NewClient("http://0.0.0.0:9200")
+	client, err := search.NewClient("http://0.0.0.0:9200", false)
 	if err != nil {
 		panic(err)
 	}

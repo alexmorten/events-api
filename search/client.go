@@ -12,26 +12,31 @@ const nodeIndexName = "neo4j-index-node"
 
 //Client wraps the elasticsearch client for ease of use
 type Client struct {
+	address string
 	*elastic.Client
 }
 
 //NewClient connects to elasticsearch and returns a handler on success
 // error will be returned if no connection could be eastablished
-func NewClient(address string) (*Client, error) {
-	client, err := elastic.NewClient(
-		elastic.SetURL(address),
-		elastic.SetSniff(false),
-	)
-	if err != nil {
-		return nil, err
+func NewClient(address string, lazy bool) (*Client, error) {
+	client := &Client{
+		address: address,
 	}
-	return &Client{
-		Client: client,
-	}, nil
+	if lazy {
+		return client, nil
+	}
+	return client, client.ensureConnectionExists()
 }
 
 //FuzzyNameSearch through nodes with given label
-func (c *Client) FuzzyNameSearch(label, searchTerm string, iterator func(props map[string]interface{})) {
+func (c *Client) FuzzyNameSearch(label, searchTerm string, iterator func(props map[string]interface{})) error {
+	if c.Client == nil {
+		err := c.ensureConnectionExists()
+		if err != nil {
+			return err
+		}
+	}
+
 	query := elastic.NewBoolQuery().Should(
 		elastic.NewMatchQuery("labels", label),
 		elastic.NewFuzzyQuery("name", searchTerm),
@@ -39,7 +44,7 @@ func (c *Client) FuzzyNameSearch(label, searchTerm string, iterator func(props m
 
 	searchResult, err := c.Search().Index(nodeIndexName).Query(query).Do(context.Background())
 	if err != nil {
-		panic(err)
+		return err
 	}
 
 	// searchResult is of type SearchResult and returns hits, suggestions,
@@ -55,4 +60,17 @@ func (c *Client) FuzzyNameSearch(label, searchTerm string, iterator func(props m
 		props := item.(map[string]interface{})
 		iterator(props)
 	}
+
+	return nil
+}
+
+func (c *Client) ensureConnectionExists() error {
+	client, err := elastic.NewClient(
+		elastic.SetURL(c.address),
+		elastic.SetSniff(false),
+	)
+	if err == nil {
+		c.Client = client
+	}
+	return err
 }

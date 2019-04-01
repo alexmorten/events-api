@@ -23,25 +23,44 @@ import (
 //Server is the outer most shell of the application
 //responsible for serving http
 type Server struct {
-	address string
+	config ServerConfig
 	Engine  *gin.Engine
 }
 
+//ServerConfig contains all configuration for the Server
+type ServerConfig struct {
+	Port int
+	Neo4jAddress string
+	ElasticsearchAddress string
+	LazyInitializeElastic bool
+}
+
+//DefaultServerConfig ...
+func DefaultServerConfig() ServerConfig {
+	return ServerConfig{
+		Port: 3000,
+		Neo4jAddress: "bolt://localhost:7687",
+		ElasticsearchAddress: "http://0.0.0.0:9200",
+		LazyInitializeElastic: true,
+	}
+}
+
 //NewServer returns a server listening on the specified address
-func NewServer(address string) *Server {
+func NewServer(config ServerConfig) *Server {
 	return &Server{
-		address: address,
+		config: config,
 	}
 }
 
 //Init the Server
 func (s *Server) Init() {
-	dbDriver := db.Driver()
+	dbDriver := db.Driver(s.config.Neo4jAddress)
 	db.MustCreateConstraints(dbDriver)
 
-	searchClient :=  mustCreateSearchClient()
+	searchClient := s.mustCreateSearchClient()
 
 	actionHandler := actions.NewActionHandler(dbDriver, searchClient)
+
 
 	s.Engine = gin.Default()
 	s.Engine.Use(cors.AllowAll())
@@ -54,7 +73,7 @@ func (s *Server) Init() {
 
 //Run the Server
 func (s *Server) Run() {
-	log.Fatal(s.Engine.Run(s.address))
+	log.Fatal(s.Engine.Run(fmt.Sprintf(":%d", s.config.Port)))
 }
 
 func jwtHandler(c *gin.Context) {
@@ -89,6 +108,15 @@ func jwtHandler(c *gin.Context) {
 	c.Next()
 }
 
+func (s *Server) mustCreateSearchClient()*search.Client{
+	client, err := search.NewClient(s.config.ElasticsearchAddress, s.config.LazyInitializeElastic)
+	if err != nil {
+		panic(err)
+	}
+	return client
+}
+
+
 func tokenFromBearer(bearer string) string {
 	if len(bearer) > 7 && strings.ToUpper(bearer[0:6]) == "BEARER" {
 		return bearer[7:]
@@ -96,10 +124,3 @@ func tokenFromBearer(bearer string) string {
 	return ""
 }
 
-func mustCreateSearchClient()*search.Client{
-	client, err := search.NewClient("http://0.0.0.0:9200")
-	if err != nil {
-		panic(err)
-	}
-	return client
-}

@@ -22,8 +22,9 @@ import (
 )
 
 func Test_Clubs(t *testing.T) {
-	dbDriver := db.Driver()
-	s := api.NewServer("")
+	config := api.DefaultServerConfig()
+	dbDriver := db.Driver(config.Neo4jAddress)
+	s := api.NewServer(config)
 	s.Init()
 	t.Run("unauthorized requests return 401", func(t *testing.T) {
 		testhelpers.Clear(dbDriver)
