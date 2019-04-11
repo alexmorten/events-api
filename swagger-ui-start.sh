@@ -1,0 +1,1 @@
+docker run -d -p 6010:8080 -e SWAGGER_JSON=$PWD/swagger/swagger.json -v $PWD/swagger/:/swagger swaggerapi/swagger-ui

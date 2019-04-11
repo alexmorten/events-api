@@ -55,3 +55,18 @@ TODOS:
  
  
 
+# Swagger
+
+## Swagger UI
+
+- pull docker ``make swagger-ui-pull``
+- start docker ``make swagger-ui-run``
+
+
+
+## Swagger Editor
+
+- pull docker ``make swagger-editor-pull``
+- start docker ``make swagger-editor-run``
+
+

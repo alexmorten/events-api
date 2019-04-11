@@ -1,0 +1,82 @@
+openapi: "3.0.1"
+info:
+  version: 1.0.0
+  title: Event API
+  license:
+    name: MIT
+servers:
+  - url: http://localhost:3000
+paths:
+  /clubs/{uuid}:
+    get:
+      summary: get Club
+      operationId: readClub
+      tags:
+        - Clubs
+      parameters:
+        - name: uuid
+          in: path
+          description: uniqe id of Club
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: A paged array of pets
+          content:
+            application/json:    
+              schema:
+                $ref: "#/components/schemas/Club"
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+
+  /clubs:
+    security:
+      - bearerAuth: []
+    post:
+      summary: create Club
+      operationId: createClub
+      tags:
+        - Clubs
+      parameters:
+        $ref: "#/components/responses/Club"
+
+components:
+  securitySchemes:
+      bearerAuth:            # arbitrary name for the security scheme
+        type: http
+        scheme: bearer
+        bearerFormat: JWT    # optional, arbitrary value for documentation purposes
+
+  schemas:
+    Club:
+      properties:
+        name:
+          type: string
+    User:
+      properties:
+        admin:
+          type: bool
+        provider:
+          type: string
+        email:
+          type: string
+          format: email
+        name:
+          type: string
+        firstName:
+          type: string
+        lastName:
+          type: string
+        nickName:
+          type: string
+        description:
+          type: string
+        userID:
+          type: string
+        avatarURL:
+          type: string
+        location:
+          type: string          
+          
