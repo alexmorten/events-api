@@ -53,6 +53,6 @@ func ClubFromProps(props map[string]interface{}) *Club {
 
 //AddAdminToClub ...
 func AddAdminToClub(dbDriver neo4j.Driver, clubUID, userUID uuid.UUID) error {
-	_, err := db.CreateRelation(dbDriver, userUID, clubUID, UserAdministersClub)
+	_, err := db.CreateRelation(dbDriver, userUID, clubUID, UserAdministersGroupOrClub)
 	return err
 }

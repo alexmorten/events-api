@@ -67,6 +67,7 @@ func (s *Server) Init() {
 	rootGroup := s.Engine.Group("/", jwtHandler)
 	actionHandler.RegisterAuthRoutes(rootGroup.Group("auth"))
 	actionHandler.RegisterClubRoutes(rootGroup.Group("clubs"))
+	actionHandler.RegisterGroupRoutes(rootGroup.Group("groups"))
 	actionHandler.RegisterEventRoutes(rootGroup.Group("events"))
 	actionHandler.RegisterSportRoutes(rootGroup.Group("sports"))
 }

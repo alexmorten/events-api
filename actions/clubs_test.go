@@ -13,7 +13,7 @@ import (
 
 	"github.com/alexmorten/events-api/models"
 
-	"github.com/alexmorten/events-api"
+	api "github.com/alexmorten/events-api"
 	"github.com/stretchr/testify/require"
 
 	"github.com/alexmorten/events-api/testhelpers"
@@ -154,7 +154,7 @@ func Test_Clubs(t *testing.T) {
 
 	t.Run("global admins can add a club admin", func(t *testing.T) {
 		testhelpers.Clear(dbDriver)
-		userToPromoted := testhelpers.CreateSomeUser(dbDriver)
+		userToPromote := testhelpers.CreateSomeUser(dbDriver)
 		nonAdminUser := testhelpers.CreateSomeUser(dbDriver)
 		adminUser := testhelpers.CreateAdminUser(dbDriver)
 		club := models.NewClub()
@@ -162,7 +162,7 @@ func Test_Clubs(t *testing.T) {
 		require.NoError(t, err)
 
 		w := httptest.NewRecorder()
-		body := fmt.Sprintf(`{"uid": "%v"}`, userToPromoted.UID.String())
+		body := fmt.Sprintf(`{"uid": "%v"}`, userToPromote.UID.String())
 		reader := bytes.NewReader([]byte(body))
 		req, _ := http.NewRequest("POST", fmt.Sprintf("/clubs/%v/admins", club.UID.String()), reader)
 
@@ -198,6 +198,6 @@ func Test_Clubs(t *testing.T) {
 		err = json.Unmarshal(w.Body.Bytes(), users)
 		require.NoError(t, err)
 		require.Len(t, *users, 1)
-		require.Equal(t, userToPromoted.UID, (*users)[0].UID)
+		require.Equal(t, userToPromote.UID, (*users)[0].UID)
 	})
 }
