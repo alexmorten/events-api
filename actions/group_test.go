@@ -285,7 +285,7 @@ func Test_Groups(t *testing.T) {
 		users := &[]models.PublicUserAttributes{}
 		err = json.Unmarshal(w.Body.Bytes(), users)
 		require.NoError(t, err)
-		require.Len(t, *users, 2)
+		require.Len(t, *users, 1)
 	})
 
 	t.Run("parent group admins can add another group admin", func(t *testing.T) {
