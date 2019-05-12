@@ -66,7 +66,7 @@ func (g *Group) AdministeredByUser(dbDriver neo4j.Driver, userUID uuid.UUID) boo
 			UserAdministersGroupOrClub,
 			GroupBelongsToGroupOrClub),
 		map[string]interface{}{"user_uid": user.UID.String(), "group_uid": g.UID.String()}))
-	fmt.Println("records: ", records, " err: ", err)
+
 	if err != nil {
 		return false
 	}
