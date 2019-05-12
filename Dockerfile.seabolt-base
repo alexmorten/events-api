@@ -7,15 +7,3 @@ WORKDIR /seabolt/build
 # CMAKE_INSTALL_LIBDIR=lib is a hack where we override default lib64 to lib to workaround a defect
 # in our generated pkg-config file
 RUN cmake -D CMAKE_BUILD_TYPE=Release -D CMAKE_INSTALL_LIBDIR=lib .. && cmake --build . --target install
-
-WORKDIR /go/src/github.com/alexmorten/events-api
-COPY . .
-RUN GO111MODULE=on GOOS=linux go build --tags seabolt_static -o api cmd/server/api.go
-
-FROM alpine:latest
-RUN apk --no-cache add ca-certificates
-RUN mkdir app
-COPY --from=builder /go/src/github.com/alexmorten/events-api/api /app
-WORKDIR /app
-CMD ["./api"]
-EXPOSE 3000
