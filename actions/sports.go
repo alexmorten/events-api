@@ -42,6 +42,8 @@ func (h *ActionHandler) getSports(c *gin.Context) {
 		c.AbortWithError(http.StatusInternalServerError, err)
 		return
 	}
+	defer dbSession.Close()
+
 	records, err := neo4j.Collect(dbSession.Run("match (n:Sport) return properties(n)", nil))
 	if err != nil {
 		c.AbortWithError(http.StatusInternalServerError, err)
