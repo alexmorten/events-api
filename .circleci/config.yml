@@ -1,4 +1,10 @@
-version: 2 # use CircleCI 2.0
+version: 2.1 # use CircleCI 2.0
+executors:
+  docker-publisher:
+    environment:
+      IMAGE_NAME: alexmorten/seabolt-base:latest
+    docker:
+      - image: circleci/buildpack-deps:stretch
 jobs: # basic units of work in a run
   build: # runs not using Workflows must have a `build` job as entry point
     docker: # run the steps with Docker
@@ -32,8 +38,46 @@ jobs: # basic units of work in a run
 
       - store_test_results: # upload test results for display in Test Summary
           path: /tmp/test-results
+  build-seabolt-image:
+    executor: docker-publisher
+    steps:
+      - checkout
+      - setup_remote_docker
+      - run:
+          name: Build Docker image
+          command: docker build -t $IMAGE_NAME:latest -f Dockerfile.seabolt-base .
+      - run:
+          name: Archive Docker image
+          command: docker save -o image.tar $IMAGE_NAME
+      - persist_to_workspace:
+          root: .
+          paths:
+            - ./image.tar
+  publish-seabolt-image:
+    executor: docker-publisher
+    steps:
+      - attach_workspace:
+          at: /tmp/workspace
+      - run:
+          name: Load archived Docker image
+          command: docker load -i /tmp/workspace/image.tar
+      - run:
+          name: Push image to docker hub
+          command: |
+            echo "$DOCKERHUB_PASS" | docker login -u "$DOCKERHUB_USERNAME" --password-stdin
+            docker push $IMAGE_NAME:latestdocker build -t $IMAGE_NAME:latest .
 workflows:
   version: 2
   build-workflow:
     jobs:
       - build
+      - build-seabolt-image:
+          filters:
+            branches:
+              only: master
+      - publish-seabolt-image:
+          requires:
+            - build-seabolt-image
+          filters:
+            branches:
+              only: master
