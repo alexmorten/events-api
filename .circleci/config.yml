@@ -18,6 +18,7 @@ jobs: # basic units of work in a run
           name: build seabolt for the neo4j bolt client
           command: >
             cd .. ;
+            apk add --no-cache ca-certificates cmake make g++ openssl-dev git curl pkgconfig ;
             git clone -b v1.7.2 https://github.com/neo4j-drivers/seabolt.git seabolt_test_dir ;
             cd  seabolt_test_dir ;
             cmake -D CMAKE_BUILD_TYPE=Release -D CMAKE_INSTALL_LIBDIR=lib .. && cmake --build . --target install ;
