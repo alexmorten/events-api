@@ -2,6 +2,7 @@ package actions
 
 import (
 	"errors"
+	"fmt"
 	"net/http"
 
 	"github.com/google/uuid"
@@ -13,46 +14,63 @@ import (
 	"github.com/neo4j/neo4j-go-driver/neo4j"
 )
 
-//RegisterClubRoutes within the given router group
-func (h *ActionHandler) RegisterClubRoutes(group *gin.RouterGroup) {
-	group.GET("/:uid", h.getClub)
-	group.GET("", h.getClubs)
-	group.PATCH("/:uid", h.updateClub)
-	group.POST("", h.postClubs)
-	group.DELETE("/:uid", h.deleteClub)
-
-	group.POST("/:uid/groups", h.postGroup)
+//RegisterGroupRoutes within the given router group
+func (h *ActionHandler) RegisterGroupRoutes(group *gin.RouterGroup) {
+	group.GET("/:uid", h.getGroup)
 	group.GET("/:uid/groups", h.getGroups)
+	group.PATCH("/:uid", h.updateGroup)
+	group.POST("/:uid/groups", h.postGroup)
+	group.DELETE("/:uid", h.deleteGroup)
 
-	group.GET("/:uid/admins", h.getAdmins)
-	group.POST("/:uid/admins", h.postAdmins)
+	group.GET("/:uid/admins", h.getGroupAdmins)
+	group.POST("/:uid/admins", h.postGroupAdmins)
 }
 
-func (h *ActionHandler) getClub(c *gin.Context) {
+func (h *ActionHandler) getGroup(c *gin.Context) {
 	uid := c.Param("uid")
 	if uid == "" {
 		c.AbortWithError(http.StatusBadRequest, errors.New("uid can't be empty"))
+		return
 	}
 
-	club, err := models.FindClub(h.dbDriver, uid)
+	group, err := models.FindGroup(h.dbDriver, uid)
 	if err != nil {
 		c.AbortWithError(http.StatusNotFound, err)
 		return
 	}
-	c.JSON(200, club)
+	c.JSON(200, group)
 }
 
-func (h *ActionHandler) getClubs(c *gin.Context) {
-	clubs := []*models.Club{}
+func (h *ActionHandler) getGroups(c *gin.Context) {
+	groups := []*models.Group{}
+
+	uid := c.Param("uid")
+	if uid == "" {
+		c.AbortWithError(http.StatusBadRequest, errors.New("uid can't be empty"))
+		return
+	}
+
+	parentGroup, _ := models.FindGroup(h.dbDriver, uid)
+	parentClub, _ := models.FindClub(h.dbDriver, uid)
+
+	if parentClub == nil && parentGroup == nil {
+		c.AbortWithError(http.StatusBadRequest, errors.New("no parent group or club found"))
+		return
+	}
 
 	dbSession, err := h.dbDriver.Session(neo4j.AccessModeRead)
 	if err != nil {
 		c.AbortWithError(http.StatusInternalServerError, err)
 		return
 	}
-	records, err := neo4j.Collect(dbSession.Run("match (n:Club) return properties(n)", nil))
+	defer dbSession.Close()
+
+	records, err := neo4j.Collect(dbSession.Run(
+		fmt.Sprintf("match (n:Group)-[:%v]->(parent {uid: $uid}) return properties(n)", models.GroupBelongsToGroupOrClub),
+		map[string]interface{}{"uid": uid}))
 	if err != nil {
 		c.AbortWithError(http.StatusInternalServerError, err)
+		fmt.Println(err)
 		return
 	}
 
@@ -61,14 +79,14 @@ func (h *ActionHandler) getClubs(c *gin.Context) {
 		if ok {
 			props, ok := propInterface.(map[string]interface{})
 			if ok {
-				clubs = append(clubs, models.ClubFromProps(props))
+				groups = append(groups, models.GroupFromProps(props))
 			}
 		}
 	}
-	c.JSON(http.StatusOK, clubs)
+	c.JSON(http.StatusOK, groups)
 }
 
-func (h *ActionHandler) postClubs(c *gin.Context) {
+func (h *ActionHandler) postGroup(c *gin.Context) {
 	currentUserClaim := h.currentUserClaim(c)
 	if currentUserClaim == nil {
 		c.AbortWithStatus(http.StatusUnauthorized)
@@ -80,29 +98,56 @@ func (h *ActionHandler) postClubs(c *gin.Context) {
 		return
 	}
 
-	club := models.NewClub()
-	clubAttributes := &models.ClubAttributes{}
-	err := c.ShouldBindJSON(clubAttributes)
+	uid := c.Param("uid")
+	if uid == "" {
+		c.AbortWithError(http.StatusBadRequest, errors.New("uid can't be empty"))
+		return
+	}
+
+	parentGroup, _ := models.FindGroup(h.dbDriver, uid)
+	parentClub, _ := models.FindClub(h.dbDriver, uid)
+
+	if parentClub == nil && parentGroup == nil {
+		c.AbortWithError(http.StatusBadRequest, errors.New("no parent group or club found"))
+		return
+	}
+	var parentUID uuid.UUID
+	if parentClub != nil {
+		parentUID = parentClub.UID
+	}
+	if parentGroup != nil {
+		parentUID = parentGroup.UID
+	}
+
+	group := models.NewGroup()
+	groupAttributes := &models.GroupAttributes{}
+	err := c.ShouldBindJSON(groupAttributes)
 	if err != nil {
 		c.AbortWithError(http.StatusBadRequest, err)
 		return
 	}
-	club.ClubAttributes = *clubAttributes
-	props, err := db.CreateBy(h.dbDriver, club, currentUserClaim.UID)
+	group.GroupAttributes = *groupAttributes
+	props, err := db.CreateBy(h.dbDriver, group, currentUserClaim.UID)
+	if err != nil {
+		c.AbortWithError(http.StatusInternalServerError, err)
+		return
+	}
+	createdgroup := models.GroupFromProps(props)
+
+	_, err = db.CreateRelation(h.dbDriver, createdgroup.UID, parentUID, models.GroupBelongsToGroupOrClub)
 	if err != nil {
 		c.AbortWithError(http.StatusInternalServerError, err)
 		return
 	}
 
-	createdclub := models.ClubFromProps(props)
-	c.JSON(http.StatusCreated, createdclub)
+	c.JSON(http.StatusCreated, createdgroup)
 }
 
-type clubAttributesUpdate struct {
+type groupAttributesUpdate struct {
 	Name *string `json:"name"`
 }
 
-func (h *ActionHandler) updateClub(c *gin.Context) {
+func (h *ActionHandler) updateGroup(c *gin.Context) {
 	currentUserClaim := h.currentUserClaim(c)
 	if currentUserClaim == nil {
 		c.AbortWithStatus(http.StatusUnauthorized)
@@ -118,31 +163,31 @@ func (h *ActionHandler) updateClub(c *gin.Context) {
 	if uid == "" {
 		c.AbortWithError(http.StatusBadRequest, errors.New("uid can't be empty"))
 	}
-	club, err := models.FindClub(h.dbDriver, uid)
+	group, err := models.FindGroup(h.dbDriver, uid)
 	if err != nil {
 		c.AbortWithError(http.StatusNotFound, err)
 		return
 	}
 
-	updateAttributes := &clubAttributesUpdate{}
+	updateAttributes := &groupAttributesUpdate{}
 	err = c.ShouldBindJSON(updateAttributes)
 	if err != nil {
 		c.AbortWithError(http.StatusBadRequest, err)
 		return
 	}
 
-	models.UpdateFrom(&club.ClubAttributes, updateAttributes)
+	models.UpdateFrom(&group.GroupAttributes, updateAttributes)
 
-	clubProps, err := db.Save(h.dbDriver, club)
+	groupProps, err := db.Save(h.dbDriver, group)
 	if err != nil {
 		c.AbortWithError(http.StatusInternalServerError, err)
 		return
 	}
 
-	c.JSON(200, models.ClubFromProps(clubProps))
+	c.JSON(200, models.GroupFromProps(groupProps))
 }
 
-func (h *ActionHandler) deleteClub(c *gin.Context) {
+func (h *ActionHandler) deleteGroup(c *gin.Context) {
 	currentUserClaim := h.currentUserClaim(c)
 	if currentUserClaim == nil {
 		c.AbortWithStatus(http.StatusUnauthorized)
@@ -158,13 +203,13 @@ func (h *ActionHandler) deleteClub(c *gin.Context) {
 	if uid == "" {
 		c.AbortWithError(http.StatusBadRequest, errors.New("uid can't be empty"))
 	}
-	club, err := models.FindClub(h.dbDriver, uid)
+	group, err := models.FindGroup(h.dbDriver, uid)
 	if err != nil {
 		c.AbortWithError(http.StatusNotFound, err)
 		return
 	}
 
-	err = db.DeleteNode(h.dbDriver, club.UID.String())
+	err = db.DeleteNode(h.dbDriver, group.UID.String())
 	if err != nil {
 		c.AbortWithError(http.StatusInternalServerError, err)
 		return
@@ -173,15 +218,10 @@ func (h *ActionHandler) deleteClub(c *gin.Context) {
 	c.JSON(http.StatusNoContent, nil)
 }
 
-func (h *ActionHandler) getAdmins(c *gin.Context) {
+func (h *ActionHandler) getGroupAdmins(c *gin.Context) {
 	currentUserClaim := h.currentUserClaim(c)
 	if currentUserClaim == nil {
 		c.AbortWithStatus(http.StatusUnauthorized)
-		return
-	}
-
-	if !currentUserClaim.Admin {
-		c.AbortWithStatus(http.StatusForbidden)
 		return
 	}
 
@@ -190,7 +230,7 @@ func (h *ActionHandler) getAdmins(c *gin.Context) {
 		c.AbortWithError(http.StatusBadRequest, errors.New("uid can't be empty"))
 	}
 
-	clubAdminsAttributes := []models.PublicUserAttributes{}
+	groupAdminsAttributes := []models.PublicUserAttributes{}
 
 	dbSession, err := h.dbDriver.Session(neo4j.AccessModeRead)
 	if err != nil {
@@ -201,7 +241,7 @@ func (h *ActionHandler) getAdmins(c *gin.Context) {
 
 	records, err := neo4j.Collect(
 		dbSession.Run(
-			"match (u:User)-[:ADMINISTERS]->(c:Club {uid: $uid}) return properties(u)",
+			"match (u:User)-[:ADMINISTERS]->(c:Group {uid: $uid}) return properties(u)",
 			map[string]interface{}{"uid": uid},
 		),
 	)
@@ -215,28 +255,34 @@ func (h *ActionHandler) getAdmins(c *gin.Context) {
 		if ok {
 			props, ok := propInterface.(map[string]interface{})
 			if ok {
-				clubAdminsAttributes = append(clubAdminsAttributes, models.UserFromProps(props).PublicAttributes())
+				groupAdminsAttributes = append(groupAdminsAttributes, models.UserFromProps(props).PublicAttributes())
 			}
 		}
 	}
-	c.JSON(http.StatusOK, clubAdminsAttributes)
+	c.JSON(http.StatusOK, groupAdminsAttributes)
 }
 
-func (h *ActionHandler) postAdmins(c *gin.Context) {
+func (h *ActionHandler) postGroupAdmins(c *gin.Context) {
 	currentUserClaim := h.currentUserClaim(c)
 	if currentUserClaim == nil {
 		c.AbortWithStatus(http.StatusUnauthorized)
 		return
 	}
 
-	if !currentUserClaim.Admin {
-		c.AbortWithStatus(http.StatusForbidden)
-		return
-	}
-
 	uid, err := uuid.Parse(c.Param("uid"))
 	if err != nil {
 		c.AbortWithError(http.StatusBadRequest, err)
+		return
+	}
+	group, err := models.FindGroup(h.dbDriver, uid.String())
+	if err != nil {
+		c.AbortWithError(http.StatusNotFound, err)
+		return
+	}
+
+	if !group.AdministeredByUser(h.dbDriver, currentUserClaim.UID) {
+		c.AbortWithStatus(http.StatusForbidden)
+		return
 	}
 
 	userPromotion := &userPromotionAttributes{}
@@ -246,7 +292,7 @@ func (h *ActionHandler) postAdmins(c *gin.Context) {
 		return
 	}
 
-	err = models.AddAdminToClub(h.dbDriver, uid, userPromotion.UID)
+	err = models.AddAdminToGroup(h.dbDriver, uid, userPromotion.UID)
 	if err != nil {
 		c.AbortWithError(http.StatusInternalServerError, err)
 		return

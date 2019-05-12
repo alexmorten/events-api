@@ -10,6 +10,7 @@ func MustCreateConstraints(dbDriver neo4j.Driver) {
 	if err != nil {
 		panic(err)
 	}
+	defer dbSession.Close()
 
 	panicOnErrSummary(dbSession.Run("CREATE CONSTRAINT ON (u:User) ASSERT u.uid IS UNIQUE", nil))
 	panicOnErrSummary(dbSession.Run("CREATE CONSTRAINT ON (u:User) ASSERT u.email IS UNIQUE", nil))

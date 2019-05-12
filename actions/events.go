@@ -42,6 +42,7 @@ func (h *ActionHandler) getEvents(c *gin.Context) {
 		c.AbortWithError(http.StatusInternalServerError, err)
 		return
 	}
+	defer dbSession.Close()
 
 	records, err := neo4j.Collect(dbSession.Run("match (n:Event) return properties(n)", nil))
 	if err != nil {

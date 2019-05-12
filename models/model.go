@@ -16,8 +16,11 @@ const (
 	//ModelCreatedByUser to show who created what thing
 	ModelCreatedByUser RelationLabel = "CREATED_BY"
 
-	//UserAdministersClub can add groups and events to club
-	UserAdministersClub = "ADMINISTERS"
+	//UserAdministersGroupOrClub can add groups and events to group/club and all its children
+	UserAdministersGroupOrClub = "ADMINISTERS"
+
+	//GroupBelongsToGroupOrClub group that belongs to a parent group or club
+	GroupBelongsToGroupOrClub = "BELONGS_TO"
 )
 
 //Model is the base for all models

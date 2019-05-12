@@ -62,6 +62,16 @@ func FindOrCreateUserByEmail(dbDriver neo4j.Driver, email string) (*User, error)
 	return createdUser, nil
 }
 
+//FindUser with its uid
+func FindUser(dbDriver neo4j.Driver, UserUID string) (*User, error) {
+	props, err := db.FindNode(dbDriver, UserUID)
+	if err != nil {
+		return nil, err
+	}
+
+	return UserFromProps(props), nil
+}
+
 //FindUserByEmail returns a pointer to a user or nil if no user was found
 func FindUserByEmail(dbDriver neo4j.Driver, email string) (*User, error) {
 	session, err := dbDriver.Session(neo4j.AccessModeRead)

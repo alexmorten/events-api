@@ -1,13 +1,14 @@
 package api
 
 import (
-	"github.com/alexmorten/events-api/search"
 	"errors"
 	"fmt"
 	"log"
 	"net/http"
 	"os"
 	"strings"
+
+	"github.com/alexmorten/events-api/search"
 
 	"github.com/alexmorten/events-api/db"
 
@@ -24,23 +25,23 @@ import (
 //responsible for serving http
 type Server struct {
 	config ServerConfig
-	Engine  *gin.Engine
+	Engine *gin.Engine
 }
 
 //ServerConfig contains all configuration for the Server
 type ServerConfig struct {
-	Port int
-	Neo4jAddress string
-	ElasticsearchAddress string
+	Port                  int
+	Neo4jAddress          string
+	ElasticsearchAddress  string
 	LazyInitializeElastic bool
 }
 
 //DefaultServerConfig ...
 func DefaultServerConfig() ServerConfig {
 	return ServerConfig{
-		Port: 3000,
-		Neo4jAddress: "bolt://localhost:7687",
-		ElasticsearchAddress: "http://0.0.0.0:9200",
+		Port:                  3000,
+		Neo4jAddress:          "bolt://localhost:7687",
+		ElasticsearchAddress:  "http://0.0.0.0:9200",
 		LazyInitializeElastic: true,
 	}
 }
@@ -61,12 +62,12 @@ func (s *Server) Init() {
 
 	actionHandler := actions.NewActionHandler(dbDriver, searchClient)
 
-
 	s.Engine = gin.Default()
 	s.Engine.Use(cors.AllowAll())
 	rootGroup := s.Engine.Group("/", jwtHandler)
 	actionHandler.RegisterAuthRoutes(rootGroup.Group("auth"))
 	actionHandler.RegisterClubRoutes(rootGroup.Group("clubs"))
+	actionHandler.RegisterGroupRoutes(rootGroup.Group("groups"))
 	actionHandler.RegisterEventRoutes(rootGroup.Group("events"))
 	actionHandler.RegisterSportRoutes(rootGroup.Group("sports"))
 }
@@ -108,7 +109,7 @@ func jwtHandler(c *gin.Context) {
 	c.Next()
 }
 
-func (s *Server) mustCreateSearchClient()*search.Client{
+func (s *Server) mustCreateSearchClient() *search.Client {
 	client, err := search.NewClient(s.config.ElasticsearchAddress, s.config.LazyInitializeElastic)
 	if err != nil {
 		panic(err)
@@ -116,11 +117,9 @@ func (s *Server) mustCreateSearchClient()*search.Client{
 	return client
 }
 
-
 func tokenFromBearer(bearer string) string {
 	if len(bearer) > 7 && strings.ToUpper(bearer[0:6]) == "BEARER" {
 		return bearer[7:]
 	}
 	return ""
 }
-
