@@ -23,25 +23,27 @@ paths:
             format: uuid
       responses:
         '200':
-          description: A paged array of pets
+          description: A paged array of Clubs
           content:
             application/json:    
               schema:
                 $ref: "#/components/schemas/Club"
-        '401':
-          $ref: '#/components/responses/UnauthorizedError'
-
   /clubs:
-    security:
-      - bearerAuth: []
     post:
+      security:
+        - bearerAuth: []
       summary: create Club
       operationId: createClub
       tags:
         - Clubs
-      parameters:
-        $ref: "#/components/responses/Club"
-
+      requestBody:
+        content:
+          application/json:
+            schema:
+             $ref: "#/components/schemas/Club"
+      responses:
+        '200':
+          description: Created
 components:
   securitySchemes:
       bearerAuth:            # arbitrary name for the security scheme
@@ -57,7 +59,7 @@ components:
     User:
       properties:
         admin:
-          type: bool
+          type: boolean
         provider:
           type: string
         email:
